@@ -1,0 +1,60 @@
+GET http://localhost:5555/users
+
+###
+POST http://localhost:5555/users
+Content-Type: application/json
+
+{
+  "email": "stoica cristi",
+  "password": "1234"
+}
+
+###
+
+POST http://localhost:5555/login
+Content-Type: application/json
+
+{
+  "email": "stoica cristi",
+  "password": "1234"
+}
+
+### Înregistrare utilizator
+POST http://localhost:5555/signup
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Autentificare utilizator
+POST http://localhost:5555/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Înregistrare utilizator (cu prefix auth)
+POST http://localhost:5555/auth/signup
+Content-Type: application/json
+
+{
+  "email": "test2@example.com",
+  "password": "password123"
+}
+
+### Autentificare utilizator (cu prefix auth)
+POST http://localhost:5555/auth/login
+Content-Type: application/json
+
+{
+  "email": "test2@example.com",
+  "password": "password123"
+}
+
+### Obține profilul utilizatorului (necesită token)
+GET http://localhost:5555/users/profile
+Authorization: Bearer <token-ul-din-răspunsul-login>
