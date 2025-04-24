@@ -21,14 +21,12 @@ const SignUp = () => {
       ...prev,
       [name]: value,
     }));
-    // Reset validation error when user types
     setValidationError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validări de bază
     if (!formData.firstName.trim()) {
       setValidationError("First Name is required");
       return;
@@ -58,7 +56,6 @@ const SignUp = () => {
       };
 
       await signup(signupData);
-      // Dacă înregistrarea a reușit, redirecționează către pagina principală
       navigate("/");
     } catch (err: any) {
       console.error("Signup failed:", err);

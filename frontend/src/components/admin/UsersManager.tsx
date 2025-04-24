@@ -11,96 +11,21 @@ import {
   ExclamationCircleIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { AdminUser } from "../../types/admin";
+import { User } from "../../types/user";
 import Loader from "../ui/Loader";
 import ToastContainer, { ToastData } from "../ui/ToastContainer";
+import { userService } from "../../services/userService";
+import { useAuth } from "../../context/AuthContext";
 
-// Mock data for users
-const mockUsers: AdminUser[] = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    role: "customer",
-    createdAt: "2023-08-15T10:15:00Z",
-    lastLogin: "2023-10-25T14:30:00Z",
-    orders: 5,
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "Admin User",
-    email: "admin@example.com",
-    role: "admin",
-    createdAt: "2023-05-10T09:20:00Z",
-    lastLogin: "2023-10-28T09:45:00Z",
-    orders: 0,
-    status: "active",
-  },
-  {
-    id: 3,
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: "customer",
-    createdAt: "2023-09-05T11:30:00Z",
-    lastLogin: "2023-10-20T16:15:00Z",
-    orders: 2,
-    status: "active",
-  },
-  {
-    id: 4,
-    name: "Robert Johnson",
-    email: "robert@example.com",
-    role: "customer",
-    createdAt: "2023-07-22T13:45:00Z",
-    lastLogin: "2023-10-15T10:30:00Z",
-    orders: 8,
-    status: "active",
-  },
-  {
-    id: 5,
-    name: "Emily Davis",
-    email: "emily@example.com",
-    role: "customer",
-    createdAt: "2023-08-30T15:20:00Z",
-    lastLogin: "2023-10-26T11:20:00Z",
-    orders: 3,
-    status: "inactive",
-  },
-  {
-    id: 6,
-    name: "Michael Wilson",
-    email: "michael@example.com",
-    role: "customer",
-    createdAt: "2023-06-18T08:15:00Z",
-    lastLogin: "2023-09-15T14:10:00Z",
-    orders: 1,
-    status: "inactive",
-  },
-  {
-    id: 7,
-    name: "Sarah Brown",
-    email: "sarah@example.com",
-    role: "customer",
-    createdAt: "2023-09-12T10:40:00Z",
-    lastLogin: "2023-10-27T13:25:00Z",
-    orders: 4,
-    status: "active",
-  },
-  {
-    id: 8,
-    name: "James Miller",
-    email: "james@example.com",
-    role: "customer",
-    createdAt: "2023-07-05T09:30:00Z",
-    lastLogin: "2023-10-18T15:40:00Z",
-    orders: 6,
-    status: "active",
-  },
-];
+interface AdminUserView extends User {
+  name?: string;
+  orders?: number;
+  lastLogin?: string;
+  status: "active" | "inactive";
+}
 
 const UsersManager = () => {
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [users, setUsers] = useState<AdminUserView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -108,42 +33,56 @@ const UsersManager = () => {
   const [statusFilter, setStatusFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
-  const [sortField, setSortField] = useState<keyof AdminUser>("name");
+  const [sortField, setSortField] = useState<keyof AdminUserView>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUserView | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  const { user } = useAuth();
 
-  // Role and status options
-  const roleOptions = ["All", "admin", "customer"];
+  const roleOptions = ["All", "admin", "user"];
   const statusOptions = ["All", "active", "inactive"];
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Simulate API call with setTimeout
-        setTimeout(() => {
-          setUsers(mockUsers);
-          setLoading(false);
-        }, 800);
-      } catch (error) {
-        console.error("Error fetching users data:", error);
-        setError("Failed to load users. Please try again later.");
-        setLoading(false);
-      }
-    };
-
     fetchUsers();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
+      const response = await userService.getUsers(user.id);
+
+      const userData = response?.data || [];
+
+      const transformedUsers: AdminUserView[] = userData.map((user: User) => ({
+        ...user,
+        name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        status: user.updatedAt ? "active" : "inactive",
+        orders: 0,
+        lastLogin: user.updatedAt,
+      }));
+
+      setUsers(transformedUsers);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching users data:", error);
+      setError("An error occurred while loading users. Please try again.");
+      setLoading(false);
+    }
+  };
 
   // Filter users based on search term, role and status
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      "" ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === "All" || user.role === roleFilter;
     const matchesStatus =
@@ -156,13 +95,17 @@ const UsersManager = () => {
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     let comparison = 0;
 
-    if (sortField === "name") {
+    if (sortField === "name" && a.name && b.name) {
       comparison = a.name.localeCompare(b.name);
     } else if (sortField === "email") {
       comparison = a.email.localeCompare(b.email);
     } else if (sortField === "role") {
       comparison = a.role.localeCompare(b.role);
-    } else if (sortField === "orders") {
+    } else if (
+      sortField === "orders" &&
+      a.orders !== undefined &&
+      b.orders !== undefined
+    ) {
       comparison = a.orders - b.orders;
     } else if (sortField === "createdAt") {
       comparison =
@@ -206,7 +149,7 @@ const UsersManager = () => {
     setCurrentPage(1);
   };
 
-  const handleSortChange = (field: keyof AdminUser) => {
+  const handleSortChange = (field: keyof AdminUserView) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -215,39 +158,58 @@ const UsersManager = () => {
     }
   };
 
-  const handleEditUser = (user: AdminUser) => {
+  const handleEditUser = (user: AdminUserView) => {
     setSelectedUser(user);
     setShowUserModal(true);
   };
 
-  const handleDeleteUser = (user: AdminUser) => {
+  const handleDeleteUser = (user: AdminUserView) => {
     setSelectedUser(user);
     setShowDeleteModal(true);
   };
 
-  const confirmDeleteUser = () => {
+  const confirmDeleteUser = async () => {
     if (selectedUser) {
       try {
+        await userService.deleteUser(selectedUser.id);
         setUsers(users.filter((user) => user.id !== selectedUser.id));
         setShowDeleteModal(false);
-        addToast("success", `User ${selectedUser.name} deleted successfully`);
+        addToast(
+          "success",
+          `User ${
+            selectedUser.name || selectedUser.email
+          } has been deleted successfully`
+        );
       } catch (error) {
         console.error("Error deleting user:", error);
-        addToast("error", "Failed to delete user. Please try again.");
+        addToast(
+          "error",
+          "An error occurred while deleting the user. Please try again."
+        );
       }
     }
   };
 
-  const handleUpdateUser = (updatedUser: AdminUser) => {
+  const handleUpdateUser = async (updatedUser: AdminUserView) => {
     try {
+      await userService.updateUser(updatedUser);
+
       setUsers(
         users.map((user) => (user.id === updatedUser.id ? updatedUser : user))
       );
       setShowUserModal(false);
-      addToast("success", `User ${updatedUser.name} updated successfully`);
+      addToast(
+        "success",
+        `User ${
+          updatedUser.name || updatedUser.email
+        } has been updated successfully`
+      );
     } catch (error) {
       console.error("Error updating user:", error);
-      addToast("error", "Failed to update user. Please try again.");
+      addToast(
+        "error",
+        "An error occurred while updating the user. Please try again."
+      );
     }
   };
 
@@ -262,8 +224,8 @@ const UsersManager = () => {
     setCurrentPage(1);
   };
 
-  // Render sort indicator for table headers
-  const renderSortIndicator = (field: keyof AdminUser) => {
+  // Render sort indicator pentru headere tabel
+  const renderSortIndicator = (field: keyof AdminUserView) => {
     if (sortField !== field) {
       return <ChevronDownIcon className="h-4 w-4 text-gray-400 opacity-50" />;
     }
@@ -275,12 +237,25 @@ const UsersManager = () => {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(date);
+    try {
+      if (!dateString) return "Undefined";
+
+      const date = new Date(dateString);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "Invalid date";
+      }
+
+      return new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }).format(date);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Format error";
+    }
   };
 
   if (loading) {
@@ -294,9 +269,9 @@ const UsersManager = () => {
         <p className="text-red-800 font-medium text-lg">{error}</p>
         <button
           className="mt-4 bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg transition-colors"
-          onClick={() => window.location.reload()}
+          onClick={fetchUsers}
         >
-          Try Again
+          Try again
         </button>
       </div>
     );
@@ -308,7 +283,7 @@ const UsersManager = () => {
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-medium text-gray-900">Users Manager</h2>
+        <h2 className="text-3xl font-medium text-gray-900">User Management</h2>
       </div>
 
       {/* Filters and Search */}
@@ -348,7 +323,9 @@ const UsersManager = () => {
               <option key={role} value={role}>
                 {role === "All"
                   ? "All Roles"
-                  : role.charAt(0).toUpperCase() + role.slice(1)}
+                  : role === "admin"
+                  ? "Administrator"
+                  : "User"}
               </option>
             ))}
           </select>
@@ -366,7 +343,9 @@ const UsersManager = () => {
               <option key={status} value={status}>
                 {status === "All"
                   ? "All Statuses"
-                  : status.charAt(0).toUpperCase() + status.slice(1)}
+                  : status === "active"
+                  ? "Active"
+                  : "Inactive"}
               </option>
             ))}
           </select>
@@ -398,11 +377,11 @@ const UsersManager = () => {
               </th>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSortChange("createdAt")}
+                onClick={() => handleSortChange("orders")}
               >
                 <div className="flex items-center">
-                  <span>Joined</span>
-                  {renderSortIndicator("createdAt")}
+                  <span>Orders</span>
+                  {renderSortIndicator("orders")}
                 </div>
               </th>
               <th
@@ -410,17 +389,8 @@ const UsersManager = () => {
                 onClick={() => handleSortChange("lastLogin")}
               >
                 <div className="flex items-center">
-                  <span>Last Login</span>
+                  <span>Last Activity</span>
                   {renderSortIndicator("lastLogin")}
-                </div>
-              </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                onClick={() => handleSortChange("orders")}
-              >
-                <div className="flex items-center">
-                  <span>Orders</span>
-                  {renderSortIndicator("orders")}
                 </div>
               </th>
               <th
@@ -447,11 +417,19 @@ const UsersManager = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0 bg-gray-200 rounded-full flex items-center justify-center">
-                        <UserIcon className="h-6 w-6 text-gray-600" />
+                        {user.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt={user.name || user.email}
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserIcon className="h-6 w-6 text-gray-600" />
+                        )}
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {user.name}
+                          {user.name || "N/A"}
                         </div>
                         <div className="text-sm text-gray-500">
                           {user.email}
@@ -465,18 +443,19 @@ const UsersManager = () => {
                         <ShieldCheckIcon className="h-5 w-5 text-accent mr-1" />
                       ) : null}
                       <span className="text-sm text-gray-900">
-                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                        {user.role === "admin" ? "Administrator" : "User"}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(user.createdAt)}
+                    {user.role === "admin" ? (
+                      <span className="font-medium text-accent">N/A</span>
+                    ) : (
+                      <span>{user.orders || 0}</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {user.lastLogin ? formatDate(user.lastLogin) : "Never"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.orders}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -486,8 +465,7 @@ const UsersManager = () => {
                           : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {user.status.charAt(0).toUpperCase() +
-                        user.status.slice(1)}
+                      {user.status === "active" ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -511,7 +489,7 @@ const UsersManager = () => {
             ) : (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={6}
                   className="px-6 py-10 text-center text-gray-500"
                 >
                   No users found matching your criteria.
@@ -627,7 +605,7 @@ const UsersManager = () => {
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">
-                Confirm Delete
+                Confirm Deletion
               </h3>
               <button
                 className="text-gray-500 hover:text-gray-700"
@@ -640,7 +618,10 @@ const UsersManager = () => {
             <div className="mb-6">
               <p className="text-gray-700">
                 Are you sure you want to delete the user{" "}
-                <span className="font-semibold">{selectedUser.name}</span>?
+                <span className="font-semibold">
+                  {selectedUser.name || selectedUser.email}
+                </span>
+                ?
               </p>
               <p className="text-sm text-gray-500 mt-2">
                 This action cannot be undone.
@@ -671,19 +652,34 @@ const UsersManager = () => {
 };
 
 interface UserFormProps {
-  user: AdminUser;
-  onSave: (user: AdminUser) => void;
+  user: AdminUserView;
+  onSave: (user: AdminUserView) => void;
   onCancel: () => void;
 }
 
 const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
-  const [formData, setFormData] = useState({ ...user });
+  const [formData, setFormData] = useState({
+    ...user,
+    firstName: user.firstName || "",
+    lastName: user.lastName || "",
+  });
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData((prev) => {
+      const newData = { ...prev, [name]: value };
+
+      // Actualizăm și câmpul name când se modifică firstName sau lastName
+      if (name === "firstName" || name === "lastName") {
+        newData.name = `${name === "firstName" ? value : prev.firstName} ${
+          name === "lastName" ? value : prev.lastName
+        }`.trim();
+      }
+
+      return newData;
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -695,15 +691,27 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Name
+          First Name
         </label>
         <input
           type="text"
-          name="name"
-          value={formData.name}
+          name="firstName"
+          value={formData.firstName}
           onChange={handleChange}
           className="w-full border border-gray-300 rounded-lg p-2 focus:ring-accent focus:border-accent"
-          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Last Name
+        </label>
+        <input
+          type="text"
+          name="lastName"
+          value={formData.lastName}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-lg p-2 focus:ring-accent focus:border-accent"
         />
       </div>
 
@@ -723,6 +731,19 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
+          Phone
+        </label>
+        <input
+          type="text"
+          name="phoneNumber"
+          value={formData.phoneNumber || ""}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-lg p-2 focus:ring-accent focus:border-accent"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Role
         </label>
         <select
@@ -732,8 +753,8 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
           className="w-full border border-gray-300 rounded-lg p-2 focus:ring-accent focus:border-accent"
           required
         >
-          <option value="admin">Admin</option>
-          <option value="customer">Customer</option>
+          <option value="admin">Administrator</option>
+          <option value="user">User</option>
         </select>
       </div>
 

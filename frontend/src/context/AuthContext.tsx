@@ -5,7 +5,8 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import { authService, userService, SignupData } from "../services/api";
+import { authService, SignupData } from "../services/api";
+import { userService } from "../services/userService";
 
 interface User {
   id: string;
@@ -122,6 +123,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoading(true);
     setError(null);
 
+    console.log("Signing up with data:", data);
     try {
       await authService.signup(data);
       await login(data.email, data.password);

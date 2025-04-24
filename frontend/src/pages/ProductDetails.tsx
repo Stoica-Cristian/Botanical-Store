@@ -10,8 +10,6 @@ import {
   ShieldCheckIcon,
   CheckIcon,
   SparklesIcon,
-  TagIcon,
-  ClockIcon,
   ExclamationCircleIcon,
   SunIcon,
   CloudIcon,
@@ -25,117 +23,7 @@ import Footer from "../components/Footer";
 import ToastContainer, { ToastData } from "../components/ui/ToastContainer";
 import { Tab } from "@headlessui/react";
 import { useCart } from "../context/CartContext";
-
-interface ProductImage {
-  id: string;
-  url: string;
-  alt: string;
-  isPrimary: boolean;
-}
-
-interface ProductVariant {
-  id: string;
-  name: string;
-  sku: string;
-  price: number;
-  oldPrice?: number;
-  stock: number;
-  size: Size;
-  potStyle: PotStyle;
-}
-
-interface ProductSpecification {
-  id: string;
-  name: string;
-  value: string;
-}
-
-interface ProductFeature {
-  id: string;
-  description: string;
-  icon?: string;
-}
-
-interface PlantCareInfo {
-  lightRequirement: string;
-  wateringFrequency: string;
-  temperature: string;
-  humidity: string;
-  fertilizing: string;
-  difficulty: string;
-}
-
-interface Review {
-  id: string;
-  author: string;
-  rating: number;
-  date: string;
-  comment: string;
-  likes: number;
-  verified: boolean;
-}
-
-interface Size {
-  label: string;
-  value: string;
-  inStock: boolean;
-}
-
-interface PotStyle {
-  name: string;
-  value: string;
-  image: string;
-}
-
-interface Badge {
-  icon: React.ComponentType<any>;
-  label: string;
-  color: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  shortDescription: string;
-  price: number;
-  oldPrice?: number;
-  sku: string;
-  stock: number;
-  rating: number;
-  reviewsCount: number;
-  scientificName: string;
-  brand: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-  categories: Array<{
-    id: string;
-    name: string;
-    slug: string;
-  }>;
-  tags: Array<{
-    id: string;
-    name: string;
-    slug: string;
-  }>;
-  images: ProductImage[];
-  variants: ProductVariant[];
-  specifications: ProductSpecification[];
-  features: ProductFeature[];
-  reviews: Review[];
-  careInfo: PlantCareInfo;
-  createdAt: string;
-  updatedAt: string;
-  warranty?: string;
-  shippingInfo?: {
-    freeShippingThreshold?: number;
-    estimatedDays: number;
-  };
-}
-
+import { Product, Size, PotStyle } from "../types/product";
 const sizes: Size[] = [
   { label: "Small", value: "small", inStock: true },
   { label: "Medium", value: "medium", inStock: true },
@@ -161,183 +49,75 @@ const potStyles: PotStyle[] = [
   },
 ];
 
-const productBadges: Badge[] = [
-  { icon: SunIcon, label: "Low Light", color: "text-yellow-600" },
-  { icon: CloudIcon, label: "Low Maintenance", color: "text-blue-600" },
-  { icon: TagIcon, label: "Air Purifying", color: "text-green-600" },
-];
-
 // Mock data
 const MOCK_PRODUCT: Product = {
   id: "1",
   name: "Monstera Deliciosa",
-  slug: "monstera-deliciosa",
   scientificName: "Monstera deliciosa",
   description:
     "The Monstera Deliciosa, also known as the Swiss Cheese Plant, is famous for its stunning, glossy, perforated leaves. This tropical plant is native to the rainforests of Central America and is an excellent statement plant for your home. Easy to care for and fast-growing, it will bring an instant jungle feel to any room.",
-  shortDescription:
-    "Stunning tropical plant with unique split leaves, perfect for brightening any indoor space",
   price: 39.99,
-  oldPrice: 49.99,
-  sku: "PLT-MON-001",
   stock: 25,
   rating: 4.8,
   reviewsCount: 156,
-  brand: {
-    id: "b1",
-    name: "GreenThumb",
-    slug: "green-thumb",
-  },
-  categories: [
-    {
-      id: "c1",
-      name: "Indoor Plants",
-      slug: "indoor-plants",
-    },
-    {
-      id: "c2",
-      name: "Tropical Plants",
-      slug: "tropical-plants",
-    },
-  ],
-  tags: [
-    {
-      id: "t1",
-      name: "Air Purifying",
-      slug: "air-purifying",
-    },
-    {
-      id: "t2",
-      name: "Pet Friendly",
-      slug: "pet-friendly",
-    },
-  ],
+  category: "Indoor Plants",
   images: [
     {
-      id: "img1",
       url: "https://placehold.co/600x600?text=Monstera+Plant",
       alt: "Monstera Deliciosa",
       isPrimary: true,
     },
     {
-      id: "img2",
       url: "https://placehold.co/600x600?text=Monstera+Leaves",
       alt: "Monstera Deliciosa Leaves Close-up",
       isPrimary: false,
     },
     {
-      id: "img3",
       url: "https://placehold.co/600x600?text=Monstera+in+Room",
       alt: "Monstera in Living Room Setting",
       isPrimary: false,
     },
   ],
-  variants: [
-    {
-      id: "v1",
-      name: "Small in Terra Cotta",
-      sku: "PLT-MON-S-TC",
-      price: 39.99,
-      oldPrice: 49.99,
-      stock: 10,
-      size: {
-        label: "Small",
-        value: "small",
-        inStock: true,
-      },
-      potStyle: {
-        name: "Terra Cotta",
-        value: "terra-cotta",
-        image: "https://placehold.co/600x600?text=Monstera+Terra+Cotta",
-      },
-    },
-    {
-      id: "v2",
-      name: "Medium in Ceramic White",
-      sku: "PLT-MON-M-CW",
-      price: 59.99,
-      oldPrice: 69.99,
-      stock: 8,
-      size: {
-        label: "Medium",
-        value: "medium",
-        inStock: true,
-      },
-      potStyle: {
-        name: "Ceramic White",
-        value: "ceramic-white",
-        image: "https://placehold.co/600x600?text=Monstera+White+Ceramic",
-      },
-    },
-    {
-      id: "v3",
-      name: "Large in Ceramic Black",
-      sku: "PLT-MON-L-CB",
-      price: 79.99,
-      oldPrice: 89.99,
-      stock: 5,
-      size: {
-        label: "Large",
-        value: "large",
-        inStock: true,
-      },
-      potStyle: {
-        name: "Ceramic Black",
-        value: "ceramic-black",
-        image: "https://placehold.co/600x600?text=Monstera+Black+Ceramic",
-      },
-    },
-  ],
   specifications: [
     {
-      id: "spec1",
       name: "Mature Height",
       value: "2-3 feet (indoor)",
     },
     {
-      id: "spec2",
       name: "Mature Width",
       value: "1-2 feet",
     },
     {
-      id: "spec3",
       name: "Growth Rate",
       value: "Fast",
     },
     {
-      id: "spec4",
       name: "Bloom Time",
       value: "Rarely blooms indoors",
     },
     {
-      id: "spec5",
       name: "Native Region",
       value: "Central America",
     },
   ],
   features: [
     {
-      id: "f1",
       description: "Air purifying qualities improve indoor air quality",
       icon: "leaf",
     },
     {
-      id: "f2",
       description: "Distinctive split leaves add unique tropical aesthetic",
       icon: "cloud",
     },
     {
-      id: "f3",
       description: "Fast-growing and easy to propagate",
       icon: "sun",
     },
     {
-      id: "f4",
       description: "Adaptable to various light conditions",
       icon: "sun",
     },
     {
-      id: "f5",
       description: "Makes a statement in any room",
       icon: "home",
     },
@@ -385,11 +165,6 @@ const MOCK_PRODUCT: Product = {
   ],
   createdAt: "2024-01-01T00:00:00Z",
   updatedAt: "2024-04-15T00:00:00Z",
-  warranty: "30-day plant health guarantee",
-  shippingInfo: {
-    freeShippingThreshold: 75,
-    estimatedDays: 3,
-  },
 };
 
 const ProductDetails = () => {
@@ -405,7 +180,6 @@ const ProductDetails = () => {
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [showCareGuide, setShowCareGuide] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showWriteReview, setShowWriteReview] = useState(false);
   const [reviewFormData, setReviewFormData] = useState({
@@ -425,12 +199,6 @@ const ProductDetails = () => {
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         setProduct(MOCK_PRODUCT);
-
-        if (MOCK_PRODUCT.variants.length > 0) {
-          setSelectedPotStyle(MOCK_PRODUCT.variants[0].potStyle);
-          setSelectedSize(MOCK_PRODUCT.variants[0].size.value);
-          setSelectedImage(MOCK_PRODUCT.variants[0].potStyle.image);
-        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to fetch product"
@@ -462,13 +230,7 @@ const ProductDetails = () => {
       return;
     }
 
-    const selectedVariant = product.variants.find(
-      (v) =>
-        v.potStyle.value === selectedPotStyle?.value &&
-        v.size.value === selectedSize
-    );
-
-    if (selectedVariant && newQuantity > selectedVariant.stock) {
+    if (product && newQuantity > product.stock) {
       showToast("error", "Cannot exceed available stock");
       return;
     }
@@ -483,21 +245,10 @@ const ProductDetails = () => {
     }
 
     try {
-      const selectedVariant = product.variants.find(
-        (v) =>
-          v.potStyle.value === selectedPotStyle.value &&
-          v.size.value === selectedSize
-      );
-
-      if (!selectedVariant) {
-        showToast("error", "Selected variant not available");
-        return;
-      }
-
       addToCart({
         id: parseInt(product.id),
         name: product.name,
-        price: selectedVariant.price,
+        price: product.price,
         image: product.images[0].url,
         alt: product.images[0].alt,
       });
@@ -623,6 +374,8 @@ const ProductDetails = () => {
     );
   }
 
+  const oldPrice = product.price * 1.5;
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
@@ -640,13 +393,11 @@ const ProductDetails = () => {
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-4 right-4 space-y-2">
-                  {product.oldPrice && (
+                  {oldPrice && (
                     <span className="inline-block bg-accent text-white text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full">
                       Save{" "}
                       {Math.round(
-                        ((product.oldPrice - product.price) /
-                          product.oldPrice) *
-                          100
+                        ((oldPrice - product.price) / oldPrice) * 100
                       )}
                       %
                     </span>
@@ -701,25 +452,6 @@ const ProductDetails = () => {
                 {product.scientificName}
               </p>
 
-              {/* Product Badges */}
-              <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
-                {productBadges.map((badge) => (
-                  <div
-                    key={badge.label}
-                    className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full bg-green-50"
-                  >
-                    <badge.icon
-                      className={`h-3 w-3 sm:h-4 sm:w-4 ${badge.color}`}
-                    />
-                    <span
-                      className={`text-xs sm:text-sm font-medium ${badge.color}`}
-                    >
-                      {badge.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
               {/* Rating and Stock */}
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
                 <div className="flex items-center gap-1">
@@ -753,19 +485,11 @@ const ProductDetails = () => {
                 <span className="text-2xl sm:text-3xl font-bold text-gray-900">
                   ${product.price.toFixed(2)}
                 </span>
-                {product.oldPrice && (
+                {oldPrice && (
                   <span className="text-lg sm:text-xl text-gray-400 line-through">
-                    ${product.oldPrice.toFixed(2)}
+                    ${oldPrice.toFixed(2)}
                   </span>
                 )}
-              </div>
-
-              {/* Special Offers */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-green-600">
-                  <ClockIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span>Spring Sale - Ends in 3 days</span>
-                </div>
               </div>
             </div>
 
@@ -805,12 +529,6 @@ const ProductDetails = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   PLANT SIZE:
                 </label>
-                <button
-                  onClick={() => setShowCareGuide(true)}
-                  className="text-xs sm:text-sm text-accent hover:underline"
-                >
-                  Care Guide
-                </button>
               </div>
               <div className="flex flex-wrap gap-2 sm:gap-3">
                 {sizes.map((size) => (
@@ -877,8 +595,7 @@ const ProductDetails = () => {
                     Safe Plant Shipping
                   </h4>
                   <p className="text-xs sm:text-sm text-gray-500">
-                    Free shipping on orders over $
-                    {product.shippingInfo?.freeShippingThreshold}
+                    Free shipping on orders over $75
                   </p>
                   <p className="text-xs text-accent mt-1">
                     Delivered in nursery pot with care
@@ -895,7 +612,7 @@ const ProductDetails = () => {
                     Plant Guarantee
                   </h4>
                   <p className="text-xs sm:text-sm text-gray-500">
-                    {product.warranty}
+                    30-day plant health guarantee
                   </p>
                   <p className="text-xs text-accent mt-1">
                     Arrives healthy or we replace it free
@@ -960,7 +677,7 @@ const ProductDetails = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
                           {product.specifications.map((spec) => (
                             <div
-                              key={spec.id}
+                              key={spec.name}
                               className="border-b pb-3 sm:pb-4"
                             >
                               <dt className="text-xs sm:text-sm font-medium text-gray-500 mb-1">
@@ -1116,16 +833,6 @@ const ProductDetails = () => {
                             </div>
                           </div>
                         </div>
-
-                        <div className="text-center bg-accent/[0.08] p-4 rounded-xl mt-6">
-                          <h3 className="font-medium mb-2">Plant Care Tip</h3>
-                          <p className="text-sm text-gray-600">
-                            Keep your {product.name} away from drafts and
-                            heating vents. Clean the leaves occasionally with a
-                            damp cloth to remove dust and help the plant
-                            breathe.
-                          </p>
-                        </div>
                       </div>
                     </div>
                   )}
@@ -1222,9 +929,6 @@ const ProductDetails = () => {
                                     </span>
                                   </div>
                                 </div>
-                                <button className="text-xs text-gray-500 hover:text-accent self-start">
-                                  Helpful ({review.likes})
-                                </button>
                               </div>
                               <p className="text-sm text-gray-600 mt-2">
                                 {review.comment}
@@ -1232,7 +936,7 @@ const ProductDetails = () => {
                             </div>
                           ))}
 
-                          {/* Controale pentru paginare */}
+                          {/*  */}
                           {totalPages > 1 && (
                             <div className="flex justify-center items-center gap-2 pt-4">
                               <button
@@ -1314,185 +1018,6 @@ const ProductDetails = () => {
           </Tab.Group>
         </div>
       </main>
-
-      {/* Plant Care Guide Modal */}
-      {showCareGuide && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowCareGuide(false)}
-        >
-          <div
-            className="bg-white rounded-xl p-4 sm:p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold">
-                Care Guide for {product.name}
-              </h3>
-              <button
-                onClick={() => setShowCareGuide(false)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-accent/[0.08] p-4 rounded-lg">
-                <h4 className="font-medium flex items-center gap-2 mb-2">
-                  <SunIcon className="h-5 w-5 text-yellow-500" />
-                  Light Requirements
-                </h4>
-                <p className="text-sm text-gray-600">
-                  {product.careInfo.lightRequirement === "low" &&
-                    "Your plant thrives in low to medium indirect light. It can tolerate lower light conditions but growth may slow. Keep away from direct sunlight which can burn the leaves."}
-                  {product.careInfo.lightRequirement === "medium" &&
-                    "Your plant prefers bright, indirect light. Place near a window with filtered light or a few feet away from a south or west-facing window. Avoid direct afternoon sun which can scorch the leaves."}
-                  {product.careInfo.lightRequirement === "high" &&
-                    "Your plant needs bright light to thrive. Place near a south or west-facing window with some direct morning sunlight. If leaves begin to yellow or brown, it may be getting too much direct sun."}
-                </p>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium flex items-center gap-2 mb-2">
-                  <CloudIcon className="h-5 w-5 text-blue-500" />
-                  Watering Tips
-                </h4>
-                <p className="text-sm text-gray-600 mb-2">
-                  {product.careInfo.wateringFrequency}
-                </p>
-                <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
-                  <li>
-                    Check soil moisture by inserting your finger an inch into
-                    the soil
-                  </li>
-                  <li>
-                    Water thoroughly until water drains from the bottom of the
-                    pot
-                  </li>
-                  <li>Empty any water that collects in the saucer</li>
-                  <li>
-                    Adjust watering frequency based on season and home
-                    conditions
-                  </li>
-                </ul>
-              </div>
-
-              <div className="bg-amber-50 p-4 rounded-lg">
-                <h4 className="font-medium flex items-center gap-2 mb-2">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="h-5 w-5 text-amber-500"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 12.75c1.148 0 2.278.08 3.383.237 1.037.146 1.866.966 1.866 2.013 0 3.728-2.35 6.75-5.25 6.75S6.75 18.728 6.75 15c0-1.046.83-1.867 1.866-2.013A24.204 24.204 0 0 1 12 12.75Z"
-                    />
-                  </svg>
-                  Fertilizing Schedule
-                </h4>
-                <p className="text-sm text-gray-600">
-                  {product.careInfo.fertilizing}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-indigo-50 p-4 rounded-lg">
-                  <h4 className="font-medium flex items-center gap-2 mb-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="h-5 w-5 text-indigo-500"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
-                      />
-                    </svg>
-                    Ideal Humidity
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    {product.careInfo.humidity}
-                  </p>
-                </div>
-
-                <div className="bg-orange-50 p-4 rounded-lg">
-                  <h4 className="font-medium flex items-center gap-2 mb-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="h-5 w-5 text-orange-500"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z"
-                      />
-                    </svg>
-                    Temperature Range
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    {product.careInfo.temperature}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <h4 className="font-medium flex items-center gap-2 mb-2">
-                  <SparklesIcon className="h-5 w-5 text-purple-500" />
-                  Additional Care Tips
-                </h4>
-                <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
-                  <li>
-                    Dust leaves regularly with a damp cloth to keep them clean
-                    and healthy
-                  </li>
-                  <li>
-                    Rotate your plant every few weeks to promote even growth
-                  </li>
-                  <li>
-                    Inspect regularly for pests, especially on the undersides of
-                    leaves
-                  </li>
-                  <li>
-                    Repot every 1-2 years in fresh potting soil when roots begin
-                    to outgrow the pot
-                  </li>
-                  <li>
-                    Prune yellowing or damaged leaves at the base with clean
-                    scissors
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showAllReviews && (
         <div

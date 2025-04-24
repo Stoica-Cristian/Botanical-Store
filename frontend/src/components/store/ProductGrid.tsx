@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Product } from "../../types/product";
 import ProductCard from "./ProductCard";
-import { productService } from "../../services/api";
+// import { productService } from "../../services/api";
 
 interface ProductGridProps {
   getFilteredProducts: (products: Product[]) => Product[];
@@ -31,37 +31,35 @@ const ProductGrid = ({ getFilteredProducts }: ProductGridProps) => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const products = await productService.getAllProducts();
+        // const products = await productService.getAllProducts();
 
         // Map backend data to frontend Product type
-        const mappedProducts = products.map((product: any) => ({
-          id: product._id,
-          _id: product._id,
-          name: product.name,
-          description: product.description || "No description available",
-          price: product.price,
-          oldPrice: product.oldPrice,
-          image:
-            product.images && product.images.length > 0
-              ? product.images.find((img: any) => img.isPrimary)?.url ||
-                product.images[0].url
-              : "https://placehold.co/300x300",
-          rating: product.rating || 0,
-          reviewCount: product.reviewsCount || 0,
-          category:
-            product.categories && product.categories.length > 0
-              ? product.categories[0].name
-              : "Uncategorized",
-          stock: product.stock || 0,
-        }));
+        // const mappedProducts = products.map((product: any) => ({
+        //   id: product._id,
+        //   _id: product._id,
+        //   name: product.name,
+        //   description: product.description || "No description available",
+        //   price: product.price,
+        //   oldPrice: product.oldPrice,
+        //   image:
+        //     product.images && product.images.length > 0
+        //       ? product.images.find((img: any) => img.isPrimary)?.url ||
+        //         product.images[0].url
+        //       : "https://placehold.co/300x300",
+        //   rating: product.rating || 0,
+        //   reviewCount: product.reviewsCount || 0,
+        //   category:
+        //     product.categories && product.categories.length > 0
+        //       ? product.categories[0].name
+        //       : "Uncategorized",
+        //   stock: product.stock || 0,
+        // }));
 
-        setAllProducts(mappedProducts);
+        // setAllProducts(mappedProducts);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch products:", err);
         setError("Failed to load products. Please try again later.");
-        // Use dummy data as fallback if the API fails
-        setAllProducts(fallbackProducts);
       } finally {
         setLoading(false);
       }
@@ -81,20 +79,6 @@ const ProductGrid = ({ getFilteredProducts }: ProductGridProps) => {
       behavior: "smooth",
     });
   }, [currentPage]);
-
-  // Fallback dummy product data in case the API fails
-  const fallbackProducts: Product[] = Array.from({ length: 6 }, (_, i) => ({
-    id: String(i + 1),
-    name: `Demo Plant ${i + 1}`,
-    description:
-      "This is a beautiful demo plant that would look great in your home or office.",
-    price: 49.99,
-    image: "https://placehold.co/300x300",
-    rating: 4.5,
-    reviewCount: 10,
-    category: "Indoor Plants",
-    stock: 20,
-  }));
 
   // Sort products
   const sortProducts = (products: Product[]) => {

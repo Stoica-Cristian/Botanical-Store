@@ -16,14 +16,12 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  const { id, _id, name, price, oldPrice, image, images, rating, reviewCount } =
-    product;
-  const productId = _id || id;
+  const { id, name, price, images, rating, reviewsCount } = product;
+  const productId = id;
   const productImage =
-    image ||
-    (images && images.length > 0
+    images && images.length > 0
       ? images[0]
-      : "https://via.placeholder.com/300x300?text=No+Image");
+      : "https://via.placeholder.com/300x300?text=No+Image";
 
   const [isHovered, setIsHovered] = useState(false);
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -48,7 +46,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
       id: Number(productId),
       name,
       price,
-      image: productImage,
+      image: typeof productImage === "string" ? productImage : productImage.url,
       alt: name,
     });
     showToast("success", `${name} has been added to cart!`);
@@ -64,7 +62,8 @@ const ProductCard = ({ product }: ProductCardProps) => {
         id: Number(productId),
         name,
         price,
-        image: productImage,
+        image:
+          typeof productImage === "string" ? productImage : productImage.url,
         alt: name,
       });
       showToast("success", `${name} has been added to wishlist!`);
@@ -73,6 +72,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
       showToast("success", `${name} has been removed from wishlist!`);
     }
   };
+
+  // Calculate old price
+  const oldPrice = product.price * 1.2;
 
   return (
     <>
@@ -84,7 +86,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
       >
         <div className="relative aspect-square overflow-hidden">
           <img
-            src={productImage}
+            src={
+              typeof productImage === "string" ? productImage : productImage.url
+            }
             alt={name}
             className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
           />
@@ -130,7 +134,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
               ))}
             </div>
             <span className="text-sm text-gray-600">
-              ({reviewCount || 0} reviews)
+              ({reviewsCount || 0} reviews)
             </span>
           </div>
           <div className="flex items-center justify-between">

@@ -2,43 +2,122 @@ import express from "express";
 import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import verifyToken from "../middleware/verifyToken.js";
+import { isAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Obține profilul utilizatorului logat
-router.get("/profile", verifyToken, async (req, res) => {
-  console.log("👤 RUTA: /users/profile - Obținere profil utilizator");
+// Obține toți utilizatorii (doar admin)
+router.get("/", verifyToken, isAdmin, async (req, res) => {
+  console.log("👥 RUTA: /users - Listare utilizatori");
   try {
-    const user = await User.findById(req.userId);
+    const users = await User.find({}, { password: 0 });
+    console.log(`✅ Număr utilizatori returnați: ${users.length}`);
+    res.status(200).json(users);
+  } catch (error) {
+    console.log(`❌ Eroare la listarea utilizatorilor: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
-    if (!user) {
-      console.log(`❌ Profil negăsit: ID=${req.userId}`);
-      return res.status(404).json({ message: "User not found" });
+// Creare utilizator (doar admin)
+router.post("/", verifyToken, isAdmin, async (req, res) => {
+  console.log("➕ RUTA: /users (POST) - Creare utilizator");
+  try {
+    const { email, password, firstName, lastName, role } = req.body;
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and Password are required" });
     }
 
-    console.log(`User role from database: "${user.role || "user"}"`);
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      email,
+      password: hashedPassword,
+      firstName,
+      lastName,
+      role: role || "user",
+    });
+
+    await user.save();
 
     const userResponse = {
       _id: user._id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role || "user",
-      avatar: user.avatar,
+      role: user.role,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
 
-    console.log(
-      `✅ Profil obținut cu succes: ${user.email} (Role: ${userResponse.role})`
-    );
-    res.status(200).json(userResponse);
+    console.log(`✅ Utilizator creat cu succes: ${user.email}`);
+    res.status(201).json(userResponse);
   } catch (error) {
-    console.log(`❌ Eroare la obținerea profilului: ${error.message}`);
-    res.status(500).send("Internal Server Error");
+    console.log(`❌ Eroare la crearea utilizatorului: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
+// Actualizează un utilizator după ID (doar admin)
+router.put("/:id", verifyToken, isAdmin, async (req, res) => {
+  console.log(
+    `✏️ RUTA: /users/${req.params.id} (PUT) - Actualizare utilizator`
+  );
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, select: "-password" }
+    );
+
+    if (!updatedUser) {
+      console.log(`❌ Utilizatorul cu ID-ul ${id} nu a fost găsit`);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(`✅ Utilizator actualizat cu succes: ${updatedUser.email}`);
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.log(`❌ Eroare la actualizarea utilizatorului: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// Ruta pentru profilul utilizatorului autentificat
+router.get("/profile", verifyToken, async (req, res) => {
+  console.log("👤 RUTA: /users/profile - Obținere profil utilizator");
+  try {
+    const user = await User.findById(req.userId).select("-password");
+
+    if (!user) {
+      console.log(`❌ Profil negăsit: ID=${req.userId}`);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(`✅ Profil obținut cu succes: ${user.email}`);
+    res.status(200).json(user);
+  } catch (error) {
+    console.log(`❌ Eroare la obținerea profilului: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// Actualizare profil utilizator
 router.put("/profile", verifyToken, async (req, res) => {
   console.log("🔄 RUTA: /users/profile (PUT) - Actualizare profil utilizator");
   try {
@@ -52,10 +131,9 @@ router.put("/profile", verifyToken, async (req, res) => {
     }
     if (req.body.avatar) updates.avatar = req.body.avatar;
 
-    console.log(`📝 Câmpuri actualizate: ${Object.keys(updates).join(", ")}`);
-
     const user = await User.findByIdAndUpdate(req.userId, updates, {
       new: true,
+      select: "-password",
     });
 
     if (!user) {
@@ -63,74 +141,11 @@ router.put("/profile", verifyToken, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const userResponse = {
-      _id: user._id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role || "user",
-      avatar: user.avatar,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
-
     console.log(`✅ Profil actualizat cu succes: ${user.email}`);
-    res.status(200).json(userResponse);
+    res.status(200).json(user);
   } catch (error) {
     console.log(`❌ Eroare la actualizarea profilului: ${error.message}`);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-// Creare utilizator
-router.post("/", async (req, res) => {
-  console.log("➕ RUTA: /users (POST) - Creare utilizator");
-  try {
-    console.log(req.body);
-    if (!req.body.email || !req.body.password) {
-      return res.status(400).send("Email and Password are required");
-    }
-
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-
-    const userData = {
-      email: req.body.email,
-      password: hashedPassword,
-    };
-
-    // Adăugăm firstName și lastName dacă sunt furnizate
-    if (req.body.firstName) userData.firstName = req.body.firstName;
-    if (req.body.lastName) userData.lastName = req.body.lastName;
-
-    const user = new User(userData);
-    await user.save();
-
-    console.log(`✅ Utilizator creat cu succes: ${user.email}`);
-    // Returnăm utilizatorul fără parolă
-    const userResponse = {
-      _id: user._id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-    };
-    res.status(201).json(userResponse);
-  } catch (error) {
-    console.log(`❌ Eroare la crearea utilizatorului: ${error.message}`);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-// Obține toți utilizatorii
-router.get("/", async (req, res) => {
-  console.log("👥 RUTA: /users - Listare utilizatori");
-  try {
-    const users = await User.find({}, { password: 0 }); // Excludem parola din rezultate
-    console.log(`✅ Număr utilizatori returnați: ${users.length}`);
-    res.status(200).json(users);
-  } catch (error) {
-    console.log(`❌ Eroare la listarea utilizatorilor: ${error.message}`);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 

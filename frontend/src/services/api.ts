@@ -1,9 +1,8 @@
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
-// Obținem URL-ul backend-ului din variabilele de mediu
 const API_URL = "http://localhost:5555";
 
-// Interfață pentru datele de înregistrare
 export interface SignupData {
   email: string;
   password: string;
@@ -11,7 +10,6 @@ export interface SignupData {
   lastName: string;
 }
 
-// Crearea instanței axios cu configurația de bază
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -19,21 +17,49 @@ const api = axios.create({
   },
 });
 
-// Interceptor pentru adăugarea token-ului la fiecare cerere
+const { user } = useAuth();
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      
+      if (user?.role === 'admin') {
+        config.headers['X-Admin-Id'] = user.id;
+      }
+    } else {
+      console.warn('No auth token found in localStorage');
     }
+    
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
 
-// Funcții pentru autentificare
+// Add response interceptor for debugging
+api.interceptors.response.use(
+  (response) => {
+    console.log(`API Response: ${response.status} from ${response.config.url}`);
+    return response;
+  },
+  (error) => {
+    console.error('API Response Error:', {
+      message: error.message,
+      response: error.response ? {
+        status: error.response.status,
+        data: error.response.data,
+        url: error.config.url
+      } : 'No response received'
+    });
+    return Promise.reject(error);
+  }
+);
+
 export const authService = {
   login: async (email: string, password: string) => {
     const response = await api.post('/api/auth/login', { email, password });
@@ -44,68 +70,6 @@ export const authService = {
     const response = await api.post('/api/auth/signup', data);
     return response.data;
   },
-};
-
-// Funcții pentru utilizatori
-export const userService = {
-  getProfile: async () => {
-    const response = await api.get('/api/users/profile');
-    return response.data;
-  },
-  
-  updateProfile: async (userData: any) => {
-    const response = await api.put('/api/users/profile', userData);
-    return response.data;
-  },
-};
-
-// Product functions
-export const productService = {
-  getAllProducts: async () => {
-    const response = await api.get('/api/products');
-    return response.data;
-  },
-
-  getFeaturedProducts: async () => {
-    const response = await api.get('/api/products/featured');
-    return response.data;
-  },
-
-  getProductById: async (id: string) => {
-    const response = await api.get(`/api/products/${id}`);
-    return response.data;
-  },
-
-  getProductBySlug: async (slug: string) => {
-    const response = await api.get(`/api/products/slug/${slug}`);
-    return response.data;
-  },
-
-  // Admin functions
-  seedDatabase: async () => {
-    const response = await api.post('/api/products/seed');
-    return response.data;
-  },
-
-  createProduct: async (productData: any) => {
-    const response = await api.post('/api/products', productData);
-    return response.data;
-  },
-
-  updateProduct: async (id: string, productData: any) => {
-    const response = await api.put(`/api/products/${id}`, productData);
-    return response.data;
-  },
-
-  deleteProduct: async (id: string) => {
-    const response = await api.delete(`/api/products/${id}`);
-    return response.data;
-  },
-
-  addReview: async (productId: string, reviewData: { rating: number, comment: string }) => {
-    const response = await api.post(`/api/products/${productId}/reviews`, reviewData);
-    return response.data;
-  }
 };
 
 export default api; 

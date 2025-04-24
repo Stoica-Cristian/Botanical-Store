@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   CurrencyDollarIcon,
   ShoppingBagIcon,
@@ -6,7 +6,6 @@ import {
   CubeIcon,
   ArrowDownIcon,
   ArrowUpIcon,
-  BanknotesIcon,
 } from "@heroicons/react/24/outline";
 import {
   LineChart,
@@ -16,14 +15,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
 } from "recharts";
-import { ToastData } from "../ui/ToastContainer";
-import { productService } from "../../services/api";
 
 interface DashboardStat {
   title: string;
@@ -194,11 +189,7 @@ interface LabelProps {
 }
 
 const Dashboard = () => {
-  const [stats, setStats] = useState<DashboardStats>(mockData);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [toasts, setToasts] = useState<ToastData[]>([]);
-  const [isSeedingDatabase, setIsSeedingDatabase] = useState(false);
+  const [stats] = useState<DashboardStats>(mockData);
 
   const dashboardStats: DashboardStat[] = [
     {
@@ -231,76 +222,11 @@ const Dashboard = () => {
     },
   ];
 
-  const showToast = (type: "success" | "error", message: string) => {
-    const id = Date.now();
-    setToasts((currentToasts) => [...currentToasts, { id, type, message }]);
-  };
-
-  const dismissToast = (id: number) => {
-    setToasts((currentToasts) =>
-      currentToasts.filter((toast) => toast.id !== id)
-    );
-  };
-
-  const handleSeedDatabase = async () => {
-    try {
-      setIsSeedingDatabase(true);
-      setError(null);
-
-      await productService.seedDatabase();
-
-      showToast("success", "Database seeded successfully with test products!");
-    } catch (error) {
-      console.error("Error seeding database:", error);
-      setError("Failed to seed database. Please try again.");
-      showToast("error", "Failed to seed database. Please try again.");
-    } finally {
-      setIsSeedingDatabase(false);
-    }
-  };
-
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={handleSeedDatabase}
-            disabled={isSeedingDatabase}
-            className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors flex items-center gap-2"
-          >
-            {isSeedingDatabase ? (
-              <>
-                <svg
-                  className="animate-spin h-4 w-4 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Seeding...
-              </>
-            ) : (
-              <>
-                <CubeIcon className="h-4 w-4" />
-                Seed Database
-              </>
-            )}
-          </button>
-        </div>
+        <div className="flex gap-2"></div>
       </div>
 
       {/* Stats */}
@@ -391,7 +317,7 @@ const Dashboard = () => {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {categoryData.map((entry, index) => (
+                  {categoryData.map((_entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
