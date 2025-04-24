@@ -70,7 +70,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           });
         } catch (err) {
           localStorage.removeItem("token");
-          console.error("Failed to verify authentication token:", err);
         }
       }
 
@@ -87,12 +86,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const response = await authService.login(email, password);
       localStorage.setItem("token", response.token);
-      console.log("Login successful, token saved");
 
       try {
         const userData = await userService.getProfile();
-        console.log("User profile data:", userData);
-        console.log("User role from API:", userData.role || "user");
 
         const userObj = {
           id: userData._id,
@@ -105,15 +101,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           updatedAt: userData.updatedAt,
         };
 
-        console.log("Setting user with role:", userObj.role);
         setUser(userObj);
       } catch (profileErr) {
-        console.error("Error fetching user profile:", profileErr);
         setError("Could not fetch user profile");
       }
     } catch (err) {
       setError("Invalid email or password");
-      console.error("Login failed:", err);
     } finally {
       setLoading(false);
     }
@@ -123,13 +116,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setLoading(true);
     setError(null);
 
-    console.log("Signing up with data:", data);
     try {
       await authService.signup(data);
       await login(data.email, data.password);
     } catch (err) {
       setError("Registration failed");
-      console.error("Signup failed:", err);
       setLoading(false);
     }
   };

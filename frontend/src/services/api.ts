@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
 
 const API_URL = "http://localhost:5555";
 
@@ -17,7 +16,6 @@ const api = axios.create({
   },
 });
 
-const { user } = useAuth();
 
 api.interceptors.request.use(
   (config) => {
@@ -25,10 +23,6 @@ api.interceptors.request.use(
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      
-      if (user?.role === 'admin') {
-        config.headers['X-Admin-Id'] = user.id;
-      }
     } else {
       console.warn('No auth token found in localStorage');
     }
@@ -41,7 +35,6 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor for debugging
 api.interceptors.response.use(
   (response) => {
     console.log(`API Response: ${response.status} from ${response.config.url}`);

@@ -149,4 +149,26 @@ router.put("/profile", verifyToken, async (req, res) => {
   }
 });
 
+router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
+  console.log(
+    `🗑️ RUTA: /users/${req.params.id} (DELETE) - Ștergere utilizator`
+  );
+  try {
+    const { id } = req.params;
+
+    const deletedUser = await User.findByIdAndDelete(id);
+
+    if (!deletedUser) {
+      console.log(`❌ Utilizatorul cu ID-ul ${id} nu a fost găsit`);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(`✅ Utilizatorul cu ID-ul ${id} a fost șters cu succes`);
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.log(`❌ Eroare la ștergerea utilizatorului: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 export default router;

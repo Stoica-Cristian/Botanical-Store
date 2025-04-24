@@ -9,4 +9,6 @@ export interface User {
   addresses: string[];
   createdAt: string;
   updatedAt: string;
+  lastLogin?: string;
+  status: "active" | "inactive";
 }

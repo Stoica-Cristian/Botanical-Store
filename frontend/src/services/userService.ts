@@ -1,6 +1,16 @@
 import api from "./api";
 import { User } from "../types/user";
 
+interface CreateUserData {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  phoneNumber?: string;
+  status: string;
+  password?: string;
+}
+
 // User functions
 export const userService = {
   getProfile: async () => {
@@ -16,12 +26,14 @@ export const userService = {
   // Admin functions
   getUsers: async (adminId: string) => {
     try {
-      const response = await api.get("/api/users", {
+      // Only add admin header if we have a valid adminId
+      const config = adminId ? {
         headers: {
           "X-Admin-Id": adminId,
         },
-      });
-
+      } : undefined;
+      
+      const response = await api.get("/api/users", config);
       return response;
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -29,13 +41,51 @@ export const userService = {
     }
   },
 
-  deleteUser: async (id: string) => {
-    const response = await api.delete(`/api/users/${id}`);
-    return response.data;
+  createUser: async (userData: CreateUserData, adminId: string = "") => {
+    try {
+      const config = adminId ? {
+        headers: {
+          "X-Admin-Id": adminId,
+        },
+      } : undefined;
+      
+      const response = await api.post("/api/users", userData, config);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
   },
 
-  updateUser: async (user: User) => {
-    const response = await api.put(`/api/users/${user.id}`, user);
-    return response.data;
+  deleteUser: async (id: string, adminId: string = "") => {
+    try {
+      const config = adminId ? {
+        headers: {
+          "X-Admin-Id": adminId,
+        },
+      } : undefined;
+      
+      const response = await api.delete(`/api/users/${id}`, config);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      throw error;
+    }
+  },
+
+  updateUser: async (user: User, adminId: string = "") => {
+    try {
+      const config = adminId ? {
+        headers: {
+          "X-Admin-Id": adminId,
+        },
+      } : undefined;
+      
+      const response = await api.put(`/api/users/${user.id}`, user, config);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      throw error;
+    }
   },
 };

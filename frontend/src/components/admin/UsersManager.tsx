@@ -10,6 +10,8 @@ import {
   ShieldCheckIcon,
   ExclamationCircleIcon,
   TrashIcon,
+  EyeIcon,
+  UserPlusIcon,
 } from "@heroicons/react/24/outline";
 import { User } from "../../types/user";
 import Loader from "../ui/Loader";
@@ -20,7 +22,6 @@ import { useAuth } from "../../context/AuthContext";
 interface AdminUserView extends User {
   name?: string;
   orders?: number;
-  lastLogin?: string;
   status: "active" | "inactive";
 }
 
@@ -38,6 +39,8 @@ const UsersManager = () => {
   const [selectedUser, setSelectedUser] = useState<AdminUserView | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const { user } = useAuth();
 
@@ -53,21 +56,31 @@ const UsersManager = () => {
       setLoading(true);
       setError(null);
 
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      const response = await userService.getUsers(user.id);
+      const response = await userService.getUsers(user?.id || "");
 
       const userData = response?.data || [];
 
-      const transformedUsers: AdminUserView[] = userData.map((user: User) => ({
-        ...user,
-        name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-        status: user.updatedAt ? "active" : "inactive",
-        orders: 0,
-        lastLogin: user.updatedAt,
-      }));
+      const transformedUsers: AdminUserView[] = userData.map(
+        (user: any, index: number) => {
+          const userId =
+            user.id ||
+            user._id ||
+            user.userId ||
+            user.user_id ||
+            `user-${index}`;
+
+          const transformedUser = {
+            ...user,
+            id: userId,
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+            status: user.updatedAt ? "active" : "inactive",
+            orders: 0,
+            lastLogin: user.updatedAt,
+          };
+
+          return transformedUser;
+        }
+      );
 
       setUsers(transformedUsers);
       setLoading(false);
@@ -95,7 +108,9 @@ const UsersManager = () => {
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     let comparison = 0;
 
-    if (sortField === "name" && a.name && b.name) {
+    if (sortField === "id") {
+      comparison = a.id.localeCompare(b.id);
+    } else if (sortField === "name" && a.name && b.name) {
       comparison = a.name.localeCompare(b.name);
     } else if (sortField === "email") {
       comparison = a.email.localeCompare(b.email);
@@ -171,7 +186,7 @@ const UsersManager = () => {
   const confirmDeleteUser = async () => {
     if (selectedUser) {
       try {
-        await userService.deleteUser(selectedUser.id);
+        await userService.deleteUser(selectedUser.id, user?.id || "");
         setUsers(users.filter((user) => user.id !== selectedUser.id));
         setShowDeleteModal(false);
         addToast(
@@ -192,7 +207,7 @@ const UsersManager = () => {
 
   const handleUpdateUser = async (updatedUser: AdminUserView) => {
     try {
-      await userService.updateUser(updatedUser);
+      await userService.updateUser(updatedUser, user?.id || "");
 
       setUsers(
         users.map((user) => (user.id === updatedUser.id ? updatedUser : user))
@@ -258,6 +273,74 @@ const UsersManager = () => {
     }
   };
 
+  const handleViewProfile = (user: AdminUserView) => {
+    setSelectedUser(user);
+    setShowProfileModal(true);
+  };
+
+  const handleCreateUser = () => {
+    // Create an empty user template
+    const newUser: AdminUserView = {
+      id: "",
+      email: "",
+      firstName: "",
+      lastName: "",
+      name: "",
+      role: "user",
+      phoneNumber: "",
+      status: "active",
+      orders: 0,
+      avatar: "",
+      addresses: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+    };
+
+    setSelectedUser(newUser);
+    setShowCreateUserModal(true);
+  };
+
+  const handleSaveNewUser = async (userData: AdminUserView) => {
+    try {
+      const response = await userService.createUser(
+        {
+          email: userData.email,
+          firstName: userData.firstName || "",
+          lastName: userData.lastName || "",
+          role: userData.role,
+          phoneNumber: userData.phoneNumber || "",
+          status: userData.status,
+          password: "defaultPassword123", // Default password - should be changed by user
+        },
+        user?.id || ""
+      );
+
+      // Add the new user to the list with the returned data
+      const newUser: AdminUserView = {
+        ...response,
+        id: response.id || response._id,
+        name: `${response.firstName || ""} ${response.lastName || ""}`.trim(),
+        status: "active",
+        orders: 0,
+        lastLogin: new Date().toISOString(),
+      };
+
+      setUsers([...users, newUser]);
+      setShowCreateUserModal(false);
+      addToast(
+        "success",
+        `User ${newUser.name || newUser.email} has been created successfully`
+      );
+    } catch (error) {
+      console.error("Error creating user:", error);
+      addToast(
+        "error",
+        "An error occurred while creating the user. Please try again."
+      );
+    }
+  };
+
   if (loading) {
     return <Loader size="lg" text="Loading users..." />;
   }
@@ -284,6 +367,13 @@ const UsersManager = () => {
 
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-medium text-gray-900">User Management</h2>
+        <button
+          onClick={handleCreateUser}
+          className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg flex items-center transition-colors"
+        >
+          <UserPlusIcon className="h-5 w-5 mr-2" />
+          Create User
+        </button>
       </div>
 
       {/* Filters and Search */}
@@ -359,6 +449,15 @@ const UsersManager = () => {
             <tr>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                onClick={() => handleSortChange("id")}
+              >
+                <div className="flex items-center">
+                  <span>ID</span>
+                  {renderSortIndicator("id")}
+                </div>
+              </th>
+              <th
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                 onClick={() => handleSortChange("name")}
               >
                 <div className="flex items-center">
@@ -409,11 +508,23 @@ const UsersManager = () => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {currentUsers.length > 0 ? (
-              currentUsers.map((user) => (
+              currentUsers.map((user, index) => (
                 <tr
-                  key={user.id}
+                  key={user.id || `user-row-${index}`}
                   className="hover:bg-gray-50 transition-colors"
                 >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div
+                      className="text-sm text-gray-500 font-mono cursor-help"
+                      title={user.id || "No ID available"}
+                    >
+                      {user.id
+                        ? user.id.length > 8
+                          ? `${user.id.substring(0, 8)}...`
+                          : user.id
+                        : "No ID"}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0 bg-gray-200 rounded-full flex items-center justify-center">
@@ -471,14 +582,23 @@ const UsersManager = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <button
+                        className="text-blue-500 hover:text-blue-600 transition-colors"
+                        onClick={() => handleViewProfile(user)}
+                        title="View Profile"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                      <button
                         className="text-accent hover:text-accent/80 transition-colors"
                         onClick={() => handleEditUser(user)}
+                        title="Edit User"
                       >
                         <PencilIcon className="h-5 w-5" />
                       </button>
                       <button
                         className="text-red-500 hover:text-red-600 transition-colors"
                         onClick={() => handleDeleteUser(user)}
+                        title="Delete User"
                       >
                         <TrashIcon className="h-5 w-5" />
                       </button>
@@ -489,7 +609,7 @@ const UsersManager = () => {
             ) : (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-6 py-10 text-center text-gray-500"
                 >
                   No users found matching your criteria.
@@ -546,7 +666,7 @@ const UsersManager = () => {
                 }
                 return (
                   <button
-                    key={pageNum}
+                    key={`page-${pageNum}`}
                     onClick={() => handlePageChange(pageNum)}
                     className={`px-3 py-1 rounded-md ${
                       currentPage === pageNum
@@ -576,10 +696,138 @@ const UsersManager = () => {
         )}
       </div>
 
+      {/* Profile View Modal */}
+      {showProfileModal && selectedUser && (
+        <div
+          className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50"
+          onClick={() => setShowProfileModal(false)}
+        >
+          <div
+            className="bg-white p-6 rounded-lg w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                User Profile
+              </h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setShowProfileModal(false)}
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-center mb-4">
+                <div className="h-20 w-20 bg-gray-200 rounded-full flex items-center justify-center">
+                  {selectedUser.avatar ? (
+                    <img
+                      src={selectedUser.avatar}
+                      alt={selectedUser.name || selectedUser.email}
+                      className="h-20 w-20 rounded-full object-cover"
+                    />
+                  ) : (
+                    <UserIcon className="h-10 w-10 text-gray-600" />
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center mb-4">
+                <h4 className="text-xl font-medium text-gray-900">
+                  {selectedUser.name || "N/A"}
+                </h4>
+                <p className="text-gray-500">{selectedUser.email}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 border-t border-gray-200 pt-4">
+                <div>
+                  <p className="text-sm text-gray-500">Role</p>
+                  <p className="font-medium flex items-center">
+                    {selectedUser.role === "admin" ? (
+                      <>
+                        <ShieldCheckIcon className="h-4 w-4 text-accent mr-1" />
+                        Administrator
+                      </>
+                    ) : (
+                      "User"
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p
+                    className={`font-medium ${
+                      selectedUser.status === "active"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {selectedUser.status === "active" ? "Active" : "Inactive"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">Phone</p>
+                  <p className="font-medium">
+                    {selectedUser.phoneNumber || "N/A"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">User ID</p>
+                  <p
+                    className="font-medium text-xs truncate"
+                    title={selectedUser.id}
+                  >
+                    {selectedUser.id}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">Last Activity</p>
+                  <p className="font-medium">
+                    {selectedUser.lastLogin
+                      ? formatDate(selectedUser.lastLogin)
+                      : "Never"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">Orders</p>
+                  <p className="font-medium">
+                    {selectedUser.role === "admin"
+                      ? "N/A"
+                      : selectedUser.orders || 0}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 border-t border-gray-200 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(false)}
+                  className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* User Edit Modal */}
       {showUserModal && selectedUser && (
-        <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div
+          className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50"
+          onClick={() => setShowUserModal(false)}
+        >
+          <div
+            className="bg-white p-6 rounded-lg w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Edit User</h3>
               <button
@@ -601,8 +849,14 @@ const UsersManager = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedUser && (
-        <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <div
+          className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div
+            className="bg-white p-6 rounded-lg w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">
                 Confirm Deletion
@@ -647,6 +901,38 @@ const UsersManager = () => {
           </div>
         </div>
       )}
+
+      {/* Create User Modal */}
+      {showCreateUserModal && selectedUser && (
+        <div
+          className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50"
+          onClick={() => setShowCreateUserModal(false)}
+        >
+          <div
+            className="bg-white p-6 rounded-lg w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                Create New User
+              </h3>
+              <button
+                className="text-gray-500 hover:text-gray-700"
+                onClick={() => setShowCreateUserModal(false)}
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <UserForm
+              user={selectedUser}
+              onSave={handleSaveNewUser}
+              onCancel={() => setShowCreateUserModal(false)}
+              isNewUser={true}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -655,13 +941,20 @@ interface UserFormProps {
   user: AdminUserView;
   onSave: (user: AdminUserView) => void;
   onCancel: () => void;
+  isNewUser?: boolean;
 }
 
-const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
+const UserForm: React.FC<UserFormProps> = ({
+  user,
+  onSave,
+  onCancel,
+  isNewUser = false,
+}) => {
   const [formData, setFormData] = useState({
     ...user,
     firstName: user.firstName || "",
     lastName: user.lastName || "",
+    password: isNewUser ? "" : undefined,
   });
 
   const handleChange = (
@@ -671,7 +964,6 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
     setFormData((prev) => {
       const newData = { ...prev, [name]: value };
 
-      // Actualizăm și câmpul name când se modifică firstName sau lastName
       if (name === "firstName" || name === "lastName") {
         newData.name = `${name === "firstName" ? value : prev.firstName} ${
           name === "lastName" ? value : prev.lastName
@@ -728,6 +1020,26 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
           required
         />
       </div>
+
+      {isNewUser && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Password
+          </label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password || ""}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-lg p-2 focus:ring-accent focus:border-accent"
+            placeholder="Leave empty for default password"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            If left empty, a default password will be set which the user should
+            change.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -786,7 +1098,7 @@ const UserForm: React.FC<UserFormProps> = ({ user, onSave, onCancel }) => {
           type="submit"
           className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
         >
-          Save Changes
+          {isNewUser ? "Create User" : "Save Changes"}
         </button>
       </div>
     </form>
