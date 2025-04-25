@@ -12,6 +12,8 @@ import {
   TrashIcon,
   EyeIcon,
   UserPlusIcon,
+  AdjustmentsHorizontalIcon,
+  CheckBadgeIcon,
 } from "@heroicons/react/24/outline";
 import { User } from "../../types/user";
 import Loader from "../ui/Loader";
@@ -375,8 +377,8 @@ const UsersManager = () => {
       </div>
 
       {/* Filters and Search */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="md:col-span-3">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
@@ -399,44 +401,60 @@ const UsersManager = () => {
           </div>
         </div>
         <div>
-          <select
-            className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:ring-accent focus:border-accent"
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-          >
-            {roleOptions.map((role) => (
-              <option key={role} value={role}>
-                {role === "All"
-                  ? "All Roles"
-                  : role === "admin"
-                  ? "Administrator"
-                  : "User"}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              className="w-full border border-gray-300 rounded-lg py-2 pl-9 pr-3 focus:ring-accent focus:border-accent appearance-none"
+              value={roleFilter}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+            >
+              {roleOptions.map((role) => (
+                <option key={role} value={role}>
+                  {role === "All"
+                    ? "All Roles"
+                    : role === "admin"
+                    ? "Administrator"
+                    : "User"}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <ShieldCheckIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <div className="absolute inset-y-0 right-0 pr-1 flex items-center pointer-events-none">
+              <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+            </div>
+          </div>
         </div>
         <div>
-          <select
-            className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:ring-accent focus:border-accent"
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-          >
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status === "All"
-                  ? "All Statuses"
-                  : status === "active"
-                  ? "Active"
-                  : "Inactive"}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              className="w-full border border-gray-300 rounded-lg py-2 pl-9 pr-3 focus:ring-accent focus:border-accent appearance-none"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status === "All"
+                    ? "All Statuses"
+                    : status === "active"
+                    ? "Active"
+                    : "Inactive"}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <CheckBadgeIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <div className="absolute inset-y-0 right-0 pr-1 flex items-center pointer-events-none">
+              <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -626,28 +644,34 @@ const UsersManager = () => {
                 {Math.min(indexOfLastUser, sortedUsers.length)} of{" "}
                 {sortedUsers.length} users
               </span>
-              <select
-                className="border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-accent focus:border-accent"
-                value={itemsPerPage}
-                onChange={handleItemsPerPageChange}
-              >
-                {[5, 10, 25].map((value) => (
-                  <option key={value} value={value}>
-                    {value} per page
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  className="border border-gray-300 rounded-md text-sm py-1.5 pl-3 pr-8 focus:outline-none focus:ring-accent focus:border-accent appearance-none"
+                  value={itemsPerPage}
+                  onChange={handleItemsPerPageChange}
+                >
+                  {[5, 10, 25, 50, 100].map((value) => (
+                    <option key={value} value={value}>
+                      {value} per page
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-1 flex items-center pointer-events-none">
+                  <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className={`p-2 rounded-md ${
+                className={`flex items-center justify-center w-9 h-9 rounded-md border ${
                   currentPage === 1
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-gray-700 hover:bg-gray-100"
+                    ? "border-gray-200 text-gray-400 cursor-not-allowed"
+                    : "border-gray-300 text-gray-700 hover:bg-gray-100"
                 }`}
+                aria-label="Previous page"
               >
                 <ChevronLeftIcon className="h-5 w-5" />
               </button>
@@ -666,10 +690,10 @@ const UsersManager = () => {
                   <button
                     key={`page-${pageNum}`}
                     onClick={() => handlePageChange(pageNum)}
-                    className={`px-3 py-1 rounded-md ${
+                    className={`flex items-center justify-center w-9 h-9 rounded-md border ${
                       currentPage === pageNum
-                        ? "bg-accent text-white"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "bg-accent text-white border-accent"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-100"
                     }`}
                   >
                     {pageNum}
@@ -681,11 +705,12 @@ const UsersManager = () => {
                   handlePageChange(Math.min(totalPages, currentPage + 1))
                 }
                 disabled={currentPage === totalPages}
-                className={`p-2 rounded-md ${
+                className={`flex items-center justify-center w-9 h-9 rounded-md border ${
                   currentPage === totalPages
-                    ? "text-gray-400 cursor-not-allowed"
-                    : "text-gray-700 hover:bg-gray-100"
+                    ? "border-gray-200 text-gray-400 cursor-not-allowed"
+                    : "border-gray-300 text-gray-700 hover:bg-gray-100"
                 }`}
+                aria-label="Next page"
               >
                 <ChevronRightIcon className="h-5 w-5" />
               </button>
