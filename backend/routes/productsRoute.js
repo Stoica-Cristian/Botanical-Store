@@ -1,6 +1,7 @@
 import express from "express";
 import Product from "../models/productModel.js";
 import verifyToken from "../middleware/verifyToken.js";
+import { isAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -57,7 +58,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // Create product (admin only)
-router.post("/", verifyToken, async (req, res) => {
+router.post("/", verifyToken, isAdmin, async (req, res) => {
   console.log("➕ RUTA: /products (POST) - Creare produs");
   try {
     // Check if user is admin
@@ -93,7 +94,7 @@ router.post("/", verifyToken, async (req, res) => {
 });
 
 // Update product (admin only)
-router.put("/:id", verifyToken, async (req, res) => {
+router.put("/:id", verifyToken, isAdmin, async (req, res) => {
   console.log(`🔄 RUTA: /products/${req.params.id} (PUT) - Actualizare produs`);
   try {
     // Check if user is admin
@@ -120,7 +121,7 @@ router.put("/:id", verifyToken, async (req, res) => {
 });
 
 // Delete product (admin only)
-router.delete("/:id", verifyToken, async (req, res) => {
+router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
   console.log(`❌ RUTA: /products/${req.params.id} (DELETE) - Ștergere produs`);
   try {
     // Check if user is admin

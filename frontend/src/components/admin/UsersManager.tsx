@@ -73,9 +73,7 @@ const UsersManager = () => {
             ...user,
             id: userId,
             name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-            status: user.updatedAt ? "active" : "inactive",
             orders: 0,
-            lastLogin: user.updatedAt,
           };
 
           return transformedUser;

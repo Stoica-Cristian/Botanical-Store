@@ -15,10 +15,11 @@ import Loader from "../ui/Loader";
 import { ToastType } from "../ui/Toast";
 import ToastContainer, { ToastData } from "../ui/ToastContainer";
 import { productService } from "../../services/productService";
+import { useAuth } from "../../context/AuthContext";
 
 const getPrimaryImage = (product: Product): string => {
   if (!product.images || product.images.length === 0) {
-    return "https://placehold.co/50x50?text=No+Image";
+    return "https://placeholder.co/50x50?text=No+Image";
   }
 
   const primaryImage = product.images.find((img) => img.isPrimary);
@@ -27,6 +28,7 @@ const getPrimaryImage = (product: Product): string => {
 };
 
 const ProductsManager = () => {
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +39,11 @@ const ProductsManager = () => {
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [deletingProductId, setDeletingProductId] = useState<string | null>(
-    null
-  );
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [productToView, setProductToView] = useState<Product | null>(null);
 
   // Add a ref to track if we've already fetched products
   const fetchedRef = useRef(false);
@@ -167,28 +171,33 @@ const ProductsManager = () => {
   );
   const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
 
-  const handleDelete = async (id: string) => {
-    if (!id || id.trim() === "") {
-      addToast("error", "Cannot delete product - invalid ID");
-      return;
-    }
+  const handleDeleteProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setShowDeleteModal(true);
+  };
 
-    try {
-      console.log("Starting direct delete for product ID:", id);
-      setDeletingProductId(id);
-
-      // Call API to delete the product
-      const response = await productService.deleteProduct(id);
-      console.log("Delete API response:", response);
-
-      // Update UI
-      setProducts(products.filter((p) => p.id !== id));
-      addToast("success", "Product deleted successfully");
-    } catch (error) {
-      console.error("Error deleting product:", error);
-      addToast("error", "Failed to delete product. Please try again.");
-    } finally {
-      setDeletingProductId(null);
+  const confirmDeleteProduct = async () => {
+    if (selectedProduct) {
+      try {
+        setIsDeleting(true);
+        await productService.deleteProduct(selectedProduct._id, user?.id || "");
+        setProducts(
+          products.filter((product) => product._id !== selectedProduct._id)
+        );
+        setShowDeleteModal(false);
+        addToast(
+          "success",
+          `Product ${selectedProduct.name} has been deleted successfully`
+        );
+      } catch (error) {
+        console.error("Error deleting product:", error);
+        addToast(
+          "error",
+          "An error occurred while deleting the product. Please try again."
+        );
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -200,12 +209,6 @@ const ProductsManager = () => {
     // Make a deep copy of the product to avoid reference issues
     const productCopy = JSON.parse(JSON.stringify(product));
     setCurrentProduct(productCopy);
-    setShowProductModal(true);
-  };
-
-  const handleAddProduct = () => {
-    const defaultCategory = categories.length > 1 ? categories[1] : "Plants";
-    setCurrentProduct(productService.createEmptyProduct(defaultCategory));
     setShowProductModal(true);
   };
 
@@ -238,42 +241,28 @@ const ProductsManager = () => {
         careInfo: product.careInfo,
       };
 
-      if (product.id && product.id.trim() !== "") {
-        // Update existing product
+      if (product._id && product._id.trim() !== "") {
+        // Update existing product with admin ID
         const updatedProduct = await productService.updateProduct(
-          product.id,
-          productData
+          product._id,
+          productData,
+          user?.id || ""
         );
 
         if (updatedProduct) {
           // Update the product in the local state
           setProducts(
-            products.map((p) => (p.id === product.id ? updatedProduct : p))
+            products.map((p) => (p._id === product._id ? updatedProduct : p))
           );
           addToast("success", "Product updated successfully");
           setShowProductModal(false);
+          setCurrentProduct(null);
         } else {
           throw new Error("Failed to update product");
         }
-      } else {
-        // Create new product
-        const newProduct = await productService.createProduct(productData);
-
-        if (newProduct) {
-          // Add the new product to the local state
-          setProducts([...products, newProduct]);
-          addToast("success", "Product added successfully");
-          setShowProductModal(false);
-        } else {
-          throw new Error("Failed to create product");
-        }
       }
     } catch (error: any) {
-      addToast(
-        "error",
-        error.message ||
-          (product.id ? "Failed to update product" : "Failed to add product")
-      );
+      addToast("error", error.message || "Failed to update product");
     } finally {
       setLoading(false);
     }
@@ -302,6 +291,11 @@ const ProductsManager = () => {
     );
   };
 
+  const handleViewProduct = (product: Product) => {
+    setProductToView(product);
+    setShowViewModal(true);
+  };
+
   if (loading) {
     return <Loader size="lg" text="Loading products..." />;
   }
@@ -325,13 +319,6 @@ const ProductsManager = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-medium text-gray-900">Products Manager</h2>
-        <button
-          className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg inline-flex items-center transition-colors"
-          onClick={handleAddProduct}
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add New Product
-        </button>
       </div>
 
       {/* Filters and Search */}
@@ -383,6 +370,15 @@ const ProductsManager = () => {
               <tr>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSortChange("_id")}
+                >
+                  <div className="flex items-center">
+                    <span>ID</span>
+                    {renderSortIndicator("_id")}
+                  </div>
+                </th>
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                   onClick={() => handleSortChange("name")}
                 >
                   <div className="flex items-center">
@@ -413,12 +409,9 @@ const ProductsManager = () => {
                   onClick={() => handleSortChange("stock")}
                 >
                   <div className="flex items-center">
-                    <span>Stock</span>
+                    <span>Inventory</span>
                     {renderSortIndicator("stock")}
                   </div>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -429,9 +422,19 @@ const ProductsManager = () => {
               {currentProducts.length > 0 ? (
                 currentProducts.map((product, index) => (
                   <tr
-                    key={product.id || `product-${index}`}
+                    key={product._id || `product-${index}`}
                     className="hover:bg-gray-50 transition-colors"
                   >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div
+                        className="text-sm text-gray-500 font-mono cursor-help"
+                        title={product._id}
+                      >
+                        {product._id
+                          ? product._id.substring(0, 8) + "..."
+                          : "No ID"}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0">
@@ -459,23 +462,50 @@ const ProductsManager = () => {
                         ${product.price.toFixed(2)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.stock}
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${
-                        product.stock > 0
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                      >
-                        {product.stock > 0 ? "In Stock" : "Out of Stock"}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <div className="text-sm font-medium text-gray-900">
+                          {product.stock} units
+                        </div>
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            ${
+                              product.stock > 0
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                        >
+                          {product.stock > 0 ? "In Stock" : "Out of Stock"}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
+                        <button
+                          className="text-blue-500 hover:text-blue-600 transition-colors"
+                          onClick={() => handleViewProduct(product)}
+                          title="View Product Details"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="w-5 h-5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                          </svg>
+                        </button>
                         <button
                           className="text-accent hover:text-accent/80 transition-colors"
                           onClick={() => handleEditProduct(product)}
@@ -483,28 +513,11 @@ const ProductsManager = () => {
                           <PencilIcon className="h-5 w-5" />
                         </button>
                         <button
-                          className={`transition-colors ${
-                            deletingProductId === product.id
-                              ? "text-gray-400 animate-pulse"
-                              : "text-red-600 hover:text-red-800"
-                          }`}
-                          onClick={() => handleDelete(product.id)}
-                          disabled={
-                            !product.id || deletingProductId === product.id
-                          }
-                          title={
-                            product.id
-                              ? deletingProductId === product.id
-                                ? "Deleting..."
-                                : "Delete product"
-                              : "Cannot delete - no ID"
-                          }
+                          type="button"
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                          onClick={() => handleDeleteProduct(product)}
                         >
-                          {deletingProductId === product.id ? (
-                            <span className="animate-spin">⏳</span>
-                          ) : (
-                            <TrashIcon className="h-5 w-5" />
-                          )}
+                          <TrashIcon className="h-5 w-5" />
                         </button>
                       </div>
                     </td>
@@ -601,28 +614,339 @@ const ProductsManager = () => {
         )}
       </div>
 
-      {/* Product Edit Modal */}
-      {showProductModal && currentProduct && (
-        <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
-                {currentProduct.id ? "Edit Product" : "Add New Product"}
+      {/* Product View Modal */}
+      {showViewModal && productToView && (
+        <div
+          className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 overflow-hidden"
+          style={{ margin: 0, padding: 0 }}
+          onClick={() => setShowViewModal(false)}
+        >
+          <div
+            className="bg-white p-8 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-auto m-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-medium text-gray-900">
+                Product Details
               </h3>
               <button
-                className="text-gray-500 hover:text-gray-700"
-                onClick={() => setShowProductModal(false)}
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+                onClick={() => setShowViewModal(false)}
               >
-                <XMarkIcon className="h-5 w-5" />
+                <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
 
-            <div className="overflow-y-auto max-h-[calc(90vh-120px)] pr-2">
+            <div className="space-y-8">
+              {/* Product Header */}
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="h-36 w-36 flex-shrink-0 bg-gray-100 rounded-md overflow-hidden shadow-sm">
+                  <img
+                    src={getPrimaryImage(productToView)}
+                    alt={productToView.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="text-center sm:text-left">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {productToView.name}
+                  </h2>
+                  <p className="text-gray-500 italic mt-2">
+                    {productToView.scientificName}
+                  </p>
+                  <div className="mt-2 flex flex-col sm:flex-row sm:items-center">
+                    <div className="text-sm text-gray-700 font-mono mb-1 sm:mb-0 sm:mr-3 bg-gray-100 px-2 py-1 rounded">
+                      ID: {productToView._id}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-center sm:justify-start">
+                    <span
+                      className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
+                      ${
+                        productToView.stock > 0
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {productToView.stock > 0 ? "In Stock" : "Out of Stock"}
+                    </span>
+                    <span className="ml-3 text-xl font-semibold text-accent">
+                      ${productToView.price.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <h4 className="text-sm font-medium text-gray-900 uppercase mb-3">
+                  Description
+                </h4>
+                <p className="text-gray-600">{productToView.description}</p>
+              </div>
+
+              {/* Details Section */}
+              <div className="grid grid-cols-2 gap-6 border-t border-gray-200 pt-6">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 uppercase mb-3">
+                    Category
+                  </h4>
+                  <p className="text-gray-600">{productToView.category}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 uppercase mb-3">
+                    Available Stock
+                  </h4>
+                  <p className="text-gray-600">{productToView.stock} units</p>
+                </div>
+              </div>
+
+              {/* Care Information */}
+              {productToView.careInfo && (
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-sm font-medium text-gray-900 uppercase mb-3">
+                    Care Information
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {productToView.careInfo.lightRequirement && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500">Light</p>
+                        <p className="font-medium">
+                          {productToView.careInfo.lightRequirement}
+                        </p>
+                      </div>
+                    )}
+                    {productToView.careInfo.wateringFrequency && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500">Watering</p>
+                        <p className="font-medium">
+                          {productToView.careInfo.wateringFrequency}
+                        </p>
+                      </div>
+                    )}
+                    {productToView.careInfo.temperature && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500">Temperature</p>
+                        <p className="font-medium">
+                          {productToView.careInfo.temperature}
+                        </p>
+                      </div>
+                    )}
+                    {productToView.careInfo.humidity && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500">Humidity</p>
+                        <p className="font-medium">
+                          {productToView.careInfo.humidity}
+                        </p>
+                      </div>
+                    )}
+                    {productToView.careInfo.fertilizing && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500">Fertilizing</p>
+                        <p className="font-medium">
+                          {productToView.careInfo.fertilizing}
+                        </p>
+                      </div>
+                    )}
+                    {productToView.careInfo.difficulty && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500">Difficulty</p>
+                        <p className="font-medium">
+                          {productToView.careInfo.difficulty}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Features */}
+              {productToView.features && productToView.features.length > 0 && (
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-sm font-medium text-gray-900 uppercase mb-3">
+                    Features
+                  </h4>
+                  <ul className="list-disc pl-5 text-gray-600 space-y-1.5">
+                    {productToView.features.map((feature, index) => (
+                      <li key={index}>{feature.description}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Specifications */}
+              {productToView.specifications &&
+                productToView.specifications.length > 0 && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <h4 className="text-sm font-medium text-gray-900 uppercase mb-3">
+                      Specifications
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {productToView.specifications.map((spec, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                          <p className="text-sm text-gray-500">{spec.name}</p>
+                          <p className="font-medium">{spec.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              {/* Images Gallery */}
+              {productToView.images && productToView.images.length > 0 && (
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-sm font-medium text-gray-900 uppercase mb-3">
+                    Images
+                  </h4>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {productToView.images.map((image, index) => (
+                      <div
+                        key={index}
+                        className="relative h-24 rounded-md overflow-hidden border border-gray-200 shadow-sm"
+                      >
+                        <img
+                          src={image.url}
+                          alt={image.alt || productToView.name}
+                          className="h-full w-full object-cover"
+                        />
+                        {image.isPrimary && (
+                          <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-2 py-0.5">
+                            Primary
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Spacer div for bottom padding */}
+              <div className="pt-2"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedProduct && (
+        <div
+          className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 overflow-hidden"
+          style={{ margin: 0, padding: 0 }}
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div
+            className="bg-white p-8 rounded-lg w-full max-w-md m-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-medium text-gray-900">
+                Confirm Deletion
+              </h3>
+              <button
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+                onClick={() => setShowDeleteModal(false)}
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="mb-8">
+              <p className="text-gray-700 text-lg">
+                Are you sure you want to delete the product{" "}
+                <span className="font-semibold">
+                  {selectedProduct?.name || "this product"}
+                </span>
+                ?
+              </p>
+              <p className="text-sm text-gray-500 mt-3">
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteProduct}
+                className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Product"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Edit Modal */}
+      {showProductModal && currentProduct && (
+        <div
+          className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 overflow-hidden"
+          style={{ margin: 0, padding: 0 }}
+          onClick={() => {
+            setShowProductModal(false);
+            setCurrentProduct(null);
+          }}
+        >
+          <div
+            className="bg-white p-8 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden m-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-medium text-gray-900">
+                Edit Product
+              </h3>
+              <button
+                className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+                onClick={() => {
+                  setShowProductModal(false);
+                  setCurrentProduct(null);
+                }}
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto max-h-[calc(90vh-140px)] pr-2">
               <ProductForm
                 product={currentProduct}
                 categories={categories.filter((c) => c !== "All")}
                 onSave={handleSaveProduct}
-                onCancel={() => setShowProductModal(false)}
+                onCancel={() => {
+                  setShowProductModal(false);
+                  setCurrentProduct(null);
+                }}
                 loading={loading}
               />
             </div>
@@ -655,8 +979,28 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const [formData, setFormData] = useState<Product>(product);
   const [imageUrl, setImageUrl] = useState<string>("");
 
+  // Effect to update form data when product changes
+  useEffect(() => {
+    setFormData(product);
+  }, [product]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Basic validation
+    if (!formData.name) {
+      onSave({ ...formData, name: "Untitled Product" });
+      return;
+    }
+    if (!formData.description) {
+      onSave({ ...formData, description: "No description provided." });
+      return;
+    }
+    if (formData.price < 0) {
+      onSave({ ...formData, price: 0 });
+      return;
+    }
+
     onSave(formData);
   };
 
@@ -758,7 +1102,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     const color = Math.floor(Math.random() * 16777215)
       .toString(16)
       .padStart(6, "0");
-    return `https://via.placeholder.com/150/${color}/ffffff?text=${encodeURIComponent(
+    return `https://placeholder.co/150/${color}/ffffff?text=${encodeURIComponent(
       name
     )}`;
   };
@@ -1226,7 +1570,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
           disabled={loading}
         >
           {loading && <span className="mr-2 animate-spin">⏳</span>}
-          {product?.id ? "Update Product" : "Add Product"}
+          Update Product
         </button>
       </div>
     </form>
