@@ -1,13 +1,65 @@
 import express from "express";
 import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
-import verifyToken from "../middleware/verifyToken.js";
 import { isAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Obține toți utilizatorii (doar admin)
-router.get("/", verifyToken, isAdmin, async (req, res) => {
+// User routes
+router.get("/profile", async (req, res) => {
+  console.log("👤 RUTA: /users/profile - Obținere profil utilizator");
+  try {
+    const user = await User.findById(req.userId).select("-password");
+
+    if (!user) {
+      console.log(`❌ Profil negăsit: ID=${req.userId}`);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(`✅ Profil obținut cu succes: ${user.email}`);
+    res.status(200).json(user);
+  } catch (error) {
+    console.log(`❌ Eroare la obținerea profilului: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+router.put("/profile", async (req, res) => {
+  console.log("🔄 RUTA: /users/profile (PUT) - Actualizare profil utilizator");
+  try {
+    const updates = {};
+
+    if (req.body.email) updates.email = req.body.email;
+    if (req.body.firstName) updates.firstName = req.body.firstName;
+    if (req.body.lastName) updates.lastName = req.body.lastName;
+    if (req.body.password) {
+      updates.password = await bcrypt.hash(req.body.password, 10);
+    }
+    if (req.body.avatar) updates.avatar = req.body.avatar;
+
+    const user = await User.findByIdAndUpdate(req.userId, updates, {
+      new: true,
+      select: "-password",
+    });
+
+    if (!user) {
+      console.log(`❌ Utilizator negăsit pentru actualizare: ID=${req.userId}`);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(`✅ Profil actualizat cu succes: ${user.email}`);
+    res.status(200).json(user);
+  } catch (error) {
+    console.log(`❌ Eroare la actualizarea profilului: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// TODO: Implement stats
+router.get("/stats", async (req, res) => {});
+
+// Admin routes
+router.get("/", isAdmin, async (req, res) => {
   console.log("👥 RUTA: /users - Listare utilizatori");
   try {
     const users = await User.find({}, { password: 0 });
@@ -19,8 +71,7 @@ router.get("/", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// Creare utilizator (doar admin)
-router.post("/", verifyToken, isAdmin, async (req, res) => {
+router.post("/", isAdmin, async (req, res) => {
   console.log("➕ RUTA: /users (POST) - Creare utilizator");
   try {
     const { email, password, firstName, lastName, role } = req.body;
@@ -66,8 +117,7 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// Actualizează un utilizator după ID (doar admin)
-router.put("/:id", verifyToken, isAdmin, async (req, res) => {
+router.put("/:id", async (req, res) => {
   console.log(
     `✏️ RUTA: /users/${req.params.id} (PUT) - Actualizare utilizator`
   );
@@ -98,58 +148,7 @@ router.put("/:id", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// Ruta pentru profilul utilizatorului autentificat
-router.get("/profile", verifyToken, async (req, res) => {
-  console.log("👤 RUTA: /users/profile - Obținere profil utilizator");
-  try {
-    const user = await User.findById(req.userId).select("-password");
-
-    if (!user) {
-      console.log(`❌ Profil negăsit: ID=${req.userId}`);
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    console.log(`✅ Profil obținut cu succes: ${user.email}`);
-    res.status(200).json(user);
-  } catch (error) {
-    console.log(`❌ Eroare la obținerea profilului: ${error.message}`);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-// Actualizare profil utilizator
-router.put("/profile", verifyToken, async (req, res) => {
-  console.log("🔄 RUTA: /users/profile (PUT) - Actualizare profil utilizator");
-  try {
-    const updates = {};
-
-    if (req.body.email) updates.email = req.body.email;
-    if (req.body.firstName) updates.firstName = req.body.firstName;
-    if (req.body.lastName) updates.lastName = req.body.lastName;
-    if (req.body.password) {
-      updates.password = await bcrypt.hash(req.body.password, 10);
-    }
-    if (req.body.avatar) updates.avatar = req.body.avatar;
-
-    const user = await User.findByIdAndUpdate(req.userId, updates, {
-      new: true,
-      select: "-password",
-    });
-
-    if (!user) {
-      console.log(`❌ Utilizator negăsit pentru actualizare: ID=${req.userId}`);
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    console.log(`✅ Profil actualizat cu succes: ${user.email}`);
-    res.status(200).json(user);
-  } catch (error) {
-    console.log(`❌ Eroare la actualizarea profilului: ${error.message}`);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
+router.delete("/:id", isAdmin, async (req, res) => {
   console.log(
     `🗑️ RUTA: /users/${req.params.id} (DELETE) - Ștergere utilizator`
   );

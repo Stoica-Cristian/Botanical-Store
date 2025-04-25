@@ -7,17 +7,7 @@ import {
 } from "react";
 import { authService, SignupData } from "../services/api";
 import { userService } from "../services/userService";
-
-interface User {
-  id: string;
-  email: string;
-  role: "user" | "admin";
-  firstName: string;
-  lastName: string;
-  avatar?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
+import { User } from "../types/user";
 
 interface AuthContextType {
   user: User | null;
@@ -65,6 +55,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             firstName: userData.firstName,
             lastName: userData.lastName,
             avatar: userData.avatar,
+            phoneNumber: userData.phoneNumber,
             createdAt: userData.createdAt,
             updatedAt: userData.updatedAt,
           });
@@ -97,6 +88,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           firstName: userData.firstName,
           lastName: userData.lastName,
           avatar: userData.avatar,
+          phoneNumber: userData.phoneNumber,
           createdAt: userData.createdAt,
           updatedAt: userData.updatedAt,
         };

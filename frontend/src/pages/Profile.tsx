@@ -7,7 +7,6 @@ import {
   HeartIcon,
   CreditCardIcon,
   XMarkIcon,
-  CameraIcon,
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { useState, useEffect } from "react";
@@ -16,14 +15,10 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ToastContainer, { ToastData } from "../components/ui/ToastContainer";
 import { useAuth } from "../context/AuthContext";
+import { User } from "../types/user";
+import { userService } from "../services/userService";
 
-interface UserProfile {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  avatar: string;
+interface UserProfile extends User {
   stats: {
     orders: number;
     wishlist: number;
@@ -38,12 +33,17 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const [user, setUser] = useState<UserProfile>({
+    id: "",
     firstName: "",
     lastName: "",
     email: "",
-    phone: "+40 123 456 789",
-    address: "123 Street Name, City, Country",
+    phoneNumber: "",
+    addresses: [],
     avatar: "",
+    role: "user",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    status: "active",
     stats: {
       orders: 0,
       wishlist: 0,
@@ -58,6 +58,7 @@ const Profile = () => {
         firstName: authUser.firstName || "",
         lastName: authUser.lastName || "",
         email: authUser.email || "",
+        phoneNumber: authUser.phoneNumber || "",
         avatar:
           authUser.avatar ||
           `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -76,12 +77,22 @@ const Profile = () => {
     }
   }, [authUser, authLoading]);
 
-  const [editForm, setEditForm] = useState<Omit<UserProfile, "stats">>({
+  const [editForm, setEditForm] = useState<
+    Omit<
+      UserProfile,
+      | "stats"
+      | "id"
+      | "role"
+      | "createdAt"
+      | "updatedAt"
+      | "status"
+      | "addresses"
+    >
+  >({
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
-    address: "",
+    phoneNumber: "",
     avatar: "",
   });
 
@@ -90,8 +101,7 @@ const Profile = () => {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      phone: user.phone,
-      address: user.address,
+      phoneNumber: user.phoneNumber,
       avatar: user.avatar,
     });
   }, [user]);
@@ -116,41 +126,58 @@ const Profile = () => {
         ...prev,
         ...editForm,
       }));
-      setIsEditModalOpen(false);
-      showToast("success", "Profile updated successfully");
+
+      const profileData = {
+        email: editForm.email,
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        avatar: editForm.avatar,
+        phoneNumber: editForm.phoneNumber,
+      };
+
+      const response = await userService.updateProfile(profileData);
+
+      if (response && response.status === 200) {
+        setIsEditModalOpen(false);
+        showToast("success", "Profile updated successfully");
+      } else {
+        showToast("error", "Failed to update profile");
+      }
     } catch (error) {
+      console.error("Error updating profile:", error);
       showToast("error", "Failed to update profile");
     }
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast("error", "Image size should be less than 5MB");
-        return;
-      }
-
-      const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
-      if (!allowedTypes.includes(file.type)) {
-        showToast(
-          "error",
-          "Please upload a valid image file (JPG, PNG, or GIF)"
-        );
-        return;
-      }
-
-      const imageUrl = URL.createObjectURL(file);
-      setEditForm((prev) => ({
-        ...prev,
-        avatar: imageUrl,
-      }));
-    }
+    const avatarUrl = e.target.value;
+    setEditForm((prev) => ({
+      ...prev,
+      avatar: avatarUrl,
+    }));
   };
 
   const LoadingPlaceholder = () => (
     <div className="animate-pulse h-4 bg-gray-200 rounded w-2/3"></div>
   );
+
+  const fetchUserStats = async () => {
+    try {
+      const stats = await userService.getUserStats();
+      setUser((prev) => ({
+        ...prev,
+        stats,
+      }));
+    } catch (error) {
+      console.error("Failed to fetch user stats:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserStats();
+    }
+  }, [isAuthenticated]);
 
   // Redirect if user is not authenticated and auth loading is complete
   if (!authLoading && !isAuthenticated) {
@@ -313,7 +340,7 @@ const Profile = () => {
                           <LoadingPlaceholder />
                         ) : (
                           <p className="text-gray-900 break-words">
-                            {user.phone || "Not set"}
+                            {user.phoneNumber || "Not set"}
                           </p>
                         )}
                       </div>
@@ -326,7 +353,7 @@ const Profile = () => {
                           <LoadingPlaceholder />
                         ) : (
                           <p className="text-gray-900 break-words">
-                            {user.address || "Not set"}
+                            {user.addresses?.[0] || "Not set"}
                           </p>
                         )}
                       </div>
@@ -419,26 +446,24 @@ const Profile = () => {
                       )}
                     </div>
                   </div>
-                  <label
-                    htmlFor="avatar-upload"
-                    className="absolute bottom-0 right-0 p-1.5 bg-accent text-white rounded-full cursor-pointer hover:bg-accent/90 transition-colors"
-                  >
-                    <CameraIcon className="h-4 w-4" />
-                  </label>
-                  <input
-                    type="file"
-                    id="avatar-upload"
-                    className="hidden"
-                    accept="image/jpeg,image/png,image/gif"
-                    onChange={handleAvatarChange}
-                  />
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
-                  Click the camera to change avatar
+                  Enter your avatar URL
                 </p>
-                <p className="text-xs text-gray-400">
-                  Maximum size: 5MB (JPG, PNG, or GIF)
-                </p>
+              </div>
+
+              {/* Avatar URL Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  URL Avatar
+                </label>
+                <input
+                  type="url"
+                  value={editForm.avatar}
+                  onChange={handleAvatarChange}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  placeholder="https://exemplu.com/imagine.jpg"
+                />
               </div>
 
               {/* First Name Input */}
@@ -504,32 +529,16 @@ const Profile = () => {
                 </label>
                 <input
                   type="tel"
-                  value={editForm.phone}
+                  value={editForm.phoneNumber}
                   onChange={(e) =>
-                    setEditForm((prev) => ({ ...prev, phone: e.target.value }))
+                    setEditForm((prev) => ({
+                      ...prev,
+                      phoneNumber: e.target.value,
+                    }))
                   }
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
                   required
                   pattern="[+]?[0-9\s-]+"
-                />
-              </div>
-
-              {/* Address Input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address
-                </label>
-                <textarea
-                  value={editForm.address}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      address: e.target.value,
-                    }))
-                  }
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent resize-none"
-                  required
                 />
               </div>
 
@@ -539,13 +548,6 @@ const Profile = () => {
                   className="w-full btn btn-accent text-white hover:bg-accent/90"
                 >
                   Save Changes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="w-full btn btn-ghost hover:bg-gray-100"
-                >
-                  Cancel
                 </button>
               </div>
             </form>

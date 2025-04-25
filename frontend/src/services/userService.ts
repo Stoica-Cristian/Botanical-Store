@@ -11,6 +11,15 @@ interface CreateUserData {
   password?: string;
 }
 
+interface UpdateProfileData {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  phoneNumber?: string;
+  password?: string;
+}
+
 // User functions
 export const userService = {
   getProfile: async () => {
@@ -18,8 +27,13 @@ export const userService = {
     return response.data;
   },
 
-  updateProfile: async (user: User) => {
-    const response = await api.put("/api/users/profile", user);
+  updateProfile: async (userData: UpdateProfileData) => {
+    const response = await api.put("/api/users/profile", userData);
+    return response;
+  },
+
+  getUserStats: async () => {
+    const response = await api.get("/api/users/stats");
     return response.data;
   },
 

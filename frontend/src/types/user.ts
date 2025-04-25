@@ -4,11 +4,11 @@ export interface User {
   firstName?: string;
   lastName?: string;
   role: "user" | "admin";
-  avatar: string;
+  avatar?: string;
   phoneNumber?: string;
-  addresses: string[];
-  createdAt: string;
-  updatedAt: string;
+  addresses?: string[];
+  createdAt?: string;
+  updatedAt?: string;
   lastLogin?: string;
-  status: "active" | "inactive";
+  status?: "active" | "inactive";
 }

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import usersRoute from "./routes/usersRoute.js";
 import authRoutes from "./routes/authRoutes.js";
 import productsRoute from "./routes/productsRoute.js";
+import verifyToken from "./middleware/verifyToken.js";
 import cors from "cors";
 import dotenv from "dotenv";
 
@@ -23,14 +24,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/", (req, res) => {
-  console.log("🏠 RUTA: / - Pagină principală");
-  res.send("API Server is running!");
-});
-
 // API routes with /api prefix
 app.use("/api/auth", authRoutes);
-app.use("/api/users", usersRoute);
+app.use("/api/users", verifyToken, usersRoute);
 app.use("/api/products", productsRoute);
 
 // Handler pentru rute inexistente
