@@ -32,10 +32,8 @@ router.put("/profile", async (req, res) => {
     if (req.body.email) updates.email = req.body.email;
     if (req.body.firstName) updates.firstName = req.body.firstName;
     if (req.body.lastName) updates.lastName = req.body.lastName;
-    if (req.body.password) {
-      updates.password = await bcrypt.hash(req.body.password, 10);
-    }
     if (req.body.avatar) updates.avatar = req.body.avatar;
+    if (req.body.phoneNumber) updates.phoneNumber = req.body.phoneNumber;
 
     const user = await User.findByIdAndUpdate(req.userId, updates, {
       new: true,
@@ -57,6 +55,40 @@ router.put("/profile", async (req, res) => {
 
 // TODO: Implement stats
 router.get("/stats", async (req, res) => {});
+
+router.put("/password", async (req, res) => {
+  console.log("🔐 RUTA: /users/password - Actualizare parolă utilizator");
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: "Both current password and new password are required",
+      });
+    }
+
+    const user = await User.findById(req.userId);
+    console.log("req.userId", req.userId);
+    console.log("user", user);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    console.log(`✅ Parolă actualizată cu succes pentru: ${user.email}`);
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.log(`❌ Eroare la actualizarea parolei: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 // Admin routes
 router.get("/", isAdmin, async (req, res) => {

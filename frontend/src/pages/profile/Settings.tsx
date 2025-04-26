@@ -11,6 +11,7 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ToastContainer, { ToastData } from "../../components/ui/ToastContainer";
 import { Link } from "react-router-dom";
+import { userService } from "../../services/userService";
 
 const Settings = () => {
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -23,9 +24,7 @@ const Settings = () => {
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
     smsNotifications: false,
-    twoFactorAuth: false,
     savePaymentInfo: true,
-    darkMode: false,
     autoLogin: true,
   });
 
@@ -59,7 +58,7 @@ const Settings = () => {
   const passwordValidation = validatePassword(newPassword);
   const passwordsMatch = newPassword === confirmPassword;
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!passwordValidation.isValid) {
@@ -72,10 +71,30 @@ const Settings = () => {
       return;
     }
 
-    showToast("success", "Password changed successfully");
-    setOldPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    try {
+      const response = await userService.updatePassword({
+        currentPassword: oldPassword,
+        newPassword: newPassword,
+      });
+
+      if (response && response.status === 200) {
+        showToast("success", "Password changed successfully");
+        setOldPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        showToast(
+          "error",
+          "Failed to change password. Please check your current password."
+        );
+      }
+    } catch (error: any) {
+      if (error.response && error.response.status === 401) {
+        showToast("error", "Current password is incorrect");
+      } else {
+        showToast("error", "Failed to change password");
+      }
+    }
   };
 
   const handleTogglePreference = (key: keyof typeof preferences) => {
@@ -83,8 +102,6 @@ const Settings = () => {
       ...prev,
       [key]: !prev[key],
     }));
-
-    showToast("success", `Setting updated successfully`);
   };
 
   return (
@@ -332,25 +349,6 @@ const Settings = () => {
                   <div className="flex items-center justify-between p-2">
                     <div>
                       <h3 className="font-medium text-base">
-                        Two-Factor Authentication
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Add an extra layer of security to your account
-                      </p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      className="toggle toggle-accent toggle-lg"
-                      checked={preferences.twoFactorAuth}
-                      onChange={() => handleTogglePreference("twoFactorAuth")}
-                    />
-                  </div>
-
-                  <div className="divider my-3"></div>
-
-                  <div className="flex items-center justify-between p-2">
-                    <div>
-                      <h3 className="font-medium text-base">
                         Save Payment Information
                       </h3>
                       <p className="text-sm text-gray-500 mt-1">
@@ -362,23 +360,6 @@ const Settings = () => {
                       className="toggle toggle-accent toggle-lg"
                       checked={preferences.savePaymentInfo}
                       onChange={() => handleTogglePreference("savePaymentInfo")}
-                    />
-                  </div>
-
-                  <div className="divider my-3"></div>
-
-                  <div className="flex items-center justify-between p-2">
-                    <div>
-                      <h3 className="font-medium text-base">Dark Mode</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Switch to dark theme
-                      </p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      className="toggle toggle-accent toggle-lg"
-                      checked={preferences.darkMode}
-                      onChange={() => handleTogglePreference("darkMode")}
                     />
                   </div>
 

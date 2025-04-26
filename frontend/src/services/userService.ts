@@ -20,6 +20,17 @@ interface UpdateProfileData {
   password?: string;
 }
 
+interface UpdatePasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface UserStats {
+  orders: number;
+  wishlist: number;
+  savedCards: number;
+}
+
 // User functions
 export const userService = {
   getProfile: async () => {
@@ -32,9 +43,14 @@ export const userService = {
     return response;
   },
 
-  getUserStats: async () => {
+  getUserStats: async (): Promise<UserStats> => {
     const response = await api.get("/api/users/stats");
     return response.data;
+  },
+
+  updatePassword: async (data: UpdatePasswordData) => {
+    const response = await api.put("/api/users/password", data);
+    return response;
   },
 
   // Admin functions

@@ -18,6 +18,7 @@ app.use(cors());
 
 // Middleware de logging pentru toate cererile
 app.use((req, res, next) => {
+  console.log("=====================================================");
   console.log(
     `📨 ${new Date().toISOString()} | ${req.method} ${req.originalUrl}`
   );

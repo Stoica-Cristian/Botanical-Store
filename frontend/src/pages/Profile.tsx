@@ -16,14 +16,10 @@ import Footer from "../components/Footer";
 import ToastContainer, { ToastData } from "../components/ui/ToastContainer";
 import { useAuth } from "../context/AuthContext";
 import { User } from "../types/user";
-import { userService } from "../services/userService";
+import { userService, UserStats } from "../services/userService";
 
 interface UserProfile extends User {
-  stats: {
-    orders: number;
-    wishlist: number;
-    savedCards: number;
-  };
+  stats: UserStats;
 }
 
 const Profile = () => {
@@ -66,11 +62,13 @@ const Profile = () => {
               "User"
           )}&background=random&color=fff`,
         stats: {
-          orders: 12,
-          wishlist: 8,
-          savedCards: 2,
+          orders: 0,
+          wishlist: 0,
+          savedCards: 0,
         },
       }));
+
+      fetchUserStats();
       setIsLoading(false);
     } else if (!authLoading) {
       setIsLoading(false);
@@ -172,12 +170,6 @@ const Profile = () => {
       console.error("Failed to fetch user stats:", error);
     }
   };
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchUserStats();
-    }
-  }, [isAuthenticated]);
 
   // Redirect if user is not authenticated and auth loading is complete
   if (!authLoading && !isAuthenticated) {
