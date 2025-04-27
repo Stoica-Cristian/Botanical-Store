@@ -16,8 +16,8 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  const { id, name, price, images, rating, reviewsCount } = product;
-  const productId = id;
+  const { _id, name, price, images, rating, reviewsCount } = product;
+  const productId = _id;
   const productImage =
     images && images.length > 0
       ? images[0]
@@ -43,7 +43,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     addToCart({
-      id: Number(productId),
+      id: productId,
       name,
       price,
       image: typeof productImage === "string" ? productImage : productImage.url,
@@ -137,21 +137,20 @@ const ProductCard = ({ product }: ProductCardProps) => {
               ({reviewsCount || 0} reviews)
             </span>
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-5">
             <div className="flex items-center gap-2">
-              <div className="text-lg font-bold text-accent">${price}</div>
+              <div className="text-xl font-bold text-accent">${price}</div>
               {oldPrice && (
                 <div className="text-sm text-gray-500 line-through">
-                  ${oldPrice}
+                  ${oldPrice.toFixed(2)}
                 </div>
               )}
             </div>
             <button
-              className="flex items-center gap-2 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors duration-200"
+              className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors duration-200"
               onClick={handleAddToCart}
             >
               <ShoppingCartIcon className="h-5 w-5" />
-              <span className="text-sm font-medium">Add to Cart</span>
             </button>
           </div>
         </div>

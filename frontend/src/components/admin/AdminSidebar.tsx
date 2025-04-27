@@ -7,6 +7,8 @@ import {
   Cog6ToothIcon,
   ArrowLeftOnRectangleIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface NavItem {
   path: string;
@@ -16,6 +18,13 @@ interface NavItem {
 
 const AdminSidebar = () => {
   const location = useLocation();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   const navItems: NavItem[] = [
     {
@@ -78,6 +87,7 @@ const AdminSidebar = () => {
       <div className="p-4 border-t border-gray-800">
         <Link
           to="/login"
+          onClick={handleLogout}
           className="flex items-center px-4 py-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
         >
           <ArrowLeftOnRectangleIcon className="w-6 h-6" />

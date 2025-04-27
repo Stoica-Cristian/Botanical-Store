@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { reviewSchema } from "./reviewModel.js";
 
 const productImageSchema = new mongoose.Schema({
   url: {
@@ -63,65 +64,6 @@ const plantCareInfoSchema = new mongoose.Schema({
   },
 });
 
-const reviewSchema = new mongoose.Schema({
-  author: {
-    type: String,
-    required: true,
-  },
-  rating: {
-    type: Number,
-    required: true,
-    min: 1,
-    max: 5,
-  },
-  date: {
-    type: Date,
-    default: Date.now,
-  },
-  comment: {
-    type: String,
-    required: true,
-  },
-  likes: {
-    type: Number,
-    default: 0,
-  },
-  verified: {
-    type: Boolean,
-    default: false,
-  },
-});
-
-const sizeSchema = new mongoose.Schema({
-  label: {
-    type: String,
-    required: true,
-  },
-  value: {
-    type: String,
-    required: true,
-  },
-  inStock: {
-    type: Boolean,
-    default: true,
-  },
-});
-
-const potStyleSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-  },
-  value: {
-    type: String,
-    required: true,
-  },
-  image: {
-    type: String,
-    required: true,
-  },
-});
-
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -146,8 +88,8 @@ const productSchema = new mongoose.Schema(
     },
     rating: {
       type: Number,
-      default: 0,
-      min: 0,
+      default: 1,
+      min: 1,
       max: 5,
     },
     reviewsCount: {
@@ -165,10 +107,13 @@ const productSchema = new mongoose.Schema(
     images: [productImageSchema],
     specifications: [productSpecificationSchema],
     features: [productFeatureSchema],
-    reviews: [reviewSchema],
+    reviews: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Review",
+      },
+    ],
     careInfo: plantCareInfoSchema,
-    sizes: [sizeSchema],
-    potStyles: [potStyleSchema],
   },
   {
     timestamps: true,

@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Product } from "../../types/product";
 import ProductCard from "./ProductCard";
-// import { productService } from "../../services/api";
+import { productService } from "../../services/productService";
 
 interface ProductGridProps {
   getFilteredProducts: (products: Product[]) => Product[];
@@ -31,32 +31,16 @@ const ProductGrid = ({ getFilteredProducts }: ProductGridProps) => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        // const products = await productService.getAllProducts();
 
-        // Map backend data to frontend Product type
-        // const mappedProducts = products.map((product: any) => ({
-        //   id: product._id,
-        //   _id: product._id,
-        //   name: product.name,
-        //   description: product.description || "No description available",
-        //   price: product.price,
-        //   oldPrice: product.oldPrice,
-        //   image:
-        //     product.images && product.images.length > 0
-        //       ? product.images.find((img: any) => img.isPrimary)?.url ||
-        //         product.images[0].url
-        //       : "https://placehold.co/300x300",
-        //   rating: product.rating || 0,
-        //   reviewCount: product.reviewsCount || 0,
-        //   category:
-        //     product.categories && product.categories.length > 0
-        //       ? product.categories[0].name
-        //       : "Uncategorized",
-        //   stock: product.stock || 0,
-        // }));
-
-        // setAllProducts(mappedProducts);
-        setError(null);
+        try {
+          const products = await productService.getAllProducts();
+          setAllProducts(products);
+        } catch (err) {
+          console.error("Failed to fetch products:", err);
+          setError("Failed to load products. Please try again later.");
+        } finally {
+          setLoading(false);
+        }
       } catch (err) {
         console.error("Failed to fetch products:", err);
         setError("Failed to load products. Please try again later.");
@@ -228,7 +212,7 @@ const ProductGrid = ({ getFilteredProducts }: ProductGridProps) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 px-4 sm:px-2 md:px-0">
         {currentProducts.length > 0 ? (
           currentProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={product._id} product={product} />
           ))
         ) : (
           <div className="col-span-full text-center py-10 text-gray-500">

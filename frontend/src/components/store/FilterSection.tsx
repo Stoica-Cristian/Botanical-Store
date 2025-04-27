@@ -32,11 +32,9 @@ const FilterSection = ({
   const categories = [
     "Indoor Plants",
     "Outdoor Plants",
-    "Succulents",
     "Flowering Plants",
     "Herbs",
     "Fruit Trees",
-    "Plant Care",
     "Pots & Planters",
     "Garden Tools",
     "Seeds & Bulbs",

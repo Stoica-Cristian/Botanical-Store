@@ -6,7 +6,6 @@ import dotenv from "dotenv";
 dotenv.config();
 const router = express.Router();
 
-// Rută pentru înregistrare
 router.post("/signup", async (req, res) => {
   console.log("🔑 RUTA: /signup - Încercare de înregistrare nou utilizator");
   try {
@@ -49,7 +48,6 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// Rută pentru autentificare
 router.post("/login", async (req, res) => {
   console.log("🔑 RUTA: /login - Încercare de autentificare");
   const email = req.body.email;

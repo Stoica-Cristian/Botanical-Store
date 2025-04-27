@@ -76,7 +76,7 @@ export const productService = {
   
   createEmptyProduct: (defaultCategory: string): Product => {
     return {
-      id: "",
+      _id: "",
       name: "",
       description: "",
       price: 0,

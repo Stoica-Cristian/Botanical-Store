@@ -24,19 +24,17 @@ interface ProductImage {
   }
   
   interface Review {
-    id: string;
-    author: string;
+    _id?: string;
+    user: {
+      _id: string;
+      name: string;
+    };
+    name: string;
     rating: number;
-    date: string;
     comment: string;
-    likes: number;
     verified: boolean;
-  }
-  
-  interface  Size {
-    label: string;
-    value: string;
-    inStock: boolean;
+    createdAt: string;
+    updatedAt: string;
   }
   
   interface PotStyle {
@@ -65,7 +63,6 @@ interface ProductImage {
   }
 
 export type { Product };
-export type { Size };
 export type { PotStyle };
 export type { ProductImage };
 export type { ProductSpecification };

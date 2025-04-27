@@ -7,7 +7,7 @@ import {
 } from "react";
 
 export interface CartProduct {
-  id: number;
+  id: string;
   name: string;
   price: number;
   image: string;
@@ -16,7 +16,7 @@ export interface CartProduct {
 }
 
 export interface NotificationType {
-  id: number;
+  id: string;
   message: string;
   type: "success" | "error";
 }
@@ -24,8 +24,8 @@ export interface NotificationType {
 interface CartContextType {
   cart: CartProduct[];
   addToCart: (product: Omit<CartProduct, "quantity">) => void;
-  removeFromCart: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
+  removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
@@ -52,7 +52,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
 
-    const items = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const items = cart.length;
     const price = cart.reduce(
       (sum, item) => sum + item.price * item.quantity,
       0
@@ -78,11 +78,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = (productId: string) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
   };
 
-  const updateQuantity = (productId: number, quantity: number) => {
+  const updateQuantity = (productId: string, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(productId);
       return;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   StarIcon,
   MinusIcon,
@@ -23,155 +23,37 @@ import Footer from "../components/Footer";
 import ToastContainer, { ToastData } from "../components/ui/ToastContainer";
 import { Tab } from "@headlessui/react";
 import { useCart } from "../context/CartContext";
-import { Product, Size, PotStyle } from "../types/product";
-const sizes: Size[] = [
-  { label: "Small", value: "small", inStock: true },
-  { label: "Medium", value: "medium", inStock: true },
-  { label: "Large", value: "large", inStock: true },
-  { label: "Extra Large", value: "xl", inStock: false },
-];
+import { Product, PotStyle } from "../types/product";
+import productService from "../services/productService";
+import { useAuth } from "../context/AuthContext";
+import reviewService from "../services/reviewService";
 
 const potStyles: PotStyle[] = [
   {
     name: "Terra Cotta",
     value: "terra-cotta",
-    image: "https://placehold.co/600x600?text=Terra+Cotta+Pot",
+    image:
+      "https://media.istockphoto.com/id/1210620582/ro/fotografie/gradinarit-interior-potting-plante-de-apartament-suculente.jpg?s=612x612&w=0&k=20&c=OSyTYwSfIr8fXUo5L0a6kkU1tRDlnw6iyp4N-fM5hes=",
   },
   {
     name: "Ceramic White",
     value: "ceramic-white",
-    image: "https://placehold.co/600x600?text=White+Ceramic+Pot",
+    image:
+      "https://images.unsplash.com/photo-1463320898484-cdee8141c787?w=700&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDJ8fHxlbnwwfHx8fHw%3D",
   },
   {
     name: "Ceramic Black",
     value: "ceramic-black",
-    image: "https://placehold.co/600x600?text=Black+Ceramic+Pot",
+    image:
+      "https://images.unsplash.com/photo-1606661426858-4ccc05e25c71?q=80&w=2574&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
   },
 ];
 
-// Mock data
-const MOCK_PRODUCT: Product = {
-  id: "1",
-  name: "Monstera Deliciosa",
-  scientificName: "Monstera deliciosa",
-  description:
-    "The Monstera Deliciosa, also known as the Swiss Cheese Plant, is famous for its stunning, glossy, perforated leaves. This tropical plant is native to the rainforests of Central America and is an excellent statement plant for your home. Easy to care for and fast-growing, it will bring an instant jungle feel to any room.",
-  price: 39.99,
-  stock: 25,
-  rating: 4.8,
-  reviewsCount: 156,
-  category: "Indoor Plants",
-  images: [
-    {
-      url: "https://placehold.co/600x600?text=Monstera+Plant",
-      alt: "Monstera Deliciosa",
-      isPrimary: true,
-    },
-    {
-      url: "https://placehold.co/600x600?text=Monstera+Leaves",
-      alt: "Monstera Deliciosa Leaves Close-up",
-      isPrimary: false,
-    },
-    {
-      url: "https://placehold.co/600x600?text=Monstera+in+Room",
-      alt: "Monstera in Living Room Setting",
-      isPrimary: false,
-    },
-  ],
-  specifications: [
-    {
-      name: "Mature Height",
-      value: "2-3 feet (indoor)",
-    },
-    {
-      name: "Mature Width",
-      value: "1-2 feet",
-    },
-    {
-      name: "Growth Rate",
-      value: "Fast",
-    },
-    {
-      name: "Bloom Time",
-      value: "Rarely blooms indoors",
-    },
-    {
-      name: "Native Region",
-      value: "Central America",
-    },
-  ],
-  features: [
-    {
-      description: "Air purifying qualities improve indoor air quality",
-      icon: "leaf",
-    },
-    {
-      description: "Distinctive split leaves add unique tropical aesthetic",
-      icon: "cloud",
-    },
-    {
-      description: "Fast-growing and easy to propagate",
-      icon: "sun",
-    },
-    {
-      description: "Adaptable to various light conditions",
-      icon: "sun",
-    },
-    {
-      description: "Makes a statement in any room",
-      icon: "home",
-    },
-  ],
-  careInfo: {
-    lightRequirement: "medium",
-    wateringFrequency:
-      "Allow soil to dry between waterings, approximately once a week",
-    temperature: "65-85°F (18-29°C)",
-    humidity: "Medium to high humidity",
-    fertilizing: "Monthly during growing season (spring to summer)",
-    difficulty: "beginner",
-  },
-  reviews: [
-    {
-      id: "r1",
-      author: "Julia Chen",
-      rating: 5,
-      date: "2024-04-15",
-      comment:
-        "My Monstera arrived in perfect condition! The leaves are gorgeous and it came with care instructions. It's already putting out a new leaf after just 3 weeks.",
-      likes: 24,
-      verified: true,
-    },
-    {
-      id: "r2",
-      author: "Marcus Lee",
-      rating: 4,
-      date: "2024-04-10",
-      comment:
-        "Beautiful plant that looks exactly like the pictures. Shipping was carefully done. Only giving 4 stars because I wish there were more size options available.",
-      likes: 12,
-      verified: true,
-    },
-    {
-      id: "r3",
-      author: "Sophia Williams",
-      rating: 5,
-      date: "2024-04-05",
-      comment:
-        "This monstera is thriving in my apartment! The seller included a helpful care guide and the plant was packaged perfectly. Highly recommend!",
-      likes: 8,
-      verified: true,
-    },
-  ],
-  createdAt: "2024-01-01T00:00:00Z",
-  updatedAt: "2024-04-15T00:00:00Z",
-};
-
 const ProductDetails = () => {
+  const { productId } = useParams<{ productId: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedPotStyle, setSelectedPotStyle] = useState<PotStyle | null>(
     null
   );
@@ -189,16 +71,47 @@ const ProductDetails = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const reviewsPerPage = 5;
   const { addToCart } = useCart();
+  const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProductAndReviews = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (!productId) {
+          setError("Product ID is missing");
+          return;
+        }
 
-        setProduct(MOCK_PRODUCT);
+        // Fetch product details
+        const productData = await productService.getProductById(productId);
+
+        // Fetch reviews for the product
+        const reviews = await reviewService.getProductReviews(productId);
+
+        // Update product with reviews
+        setProduct({
+          ...productData,
+          reviews,
+          reviewsCount: reviews.length,
+          rating:
+            reviews.length > 0
+              ? Number(
+                  (
+                    reviews.reduce((acc, review) => acc + review.rating, 0) /
+                    reviews.length
+                  ).toFixed(1)
+                )
+              : 0,
+        });
+
+        if (productData?.images?.length > 0) {
+          const mainImage =
+            productData.images.find((img) => img.isPrimary) ||
+            productData.images[0];
+          setSelectedImage(mainImage.url);
+        }
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to fetch product"
@@ -208,8 +121,8 @@ const ProductDetails = () => {
       }
     };
 
-    fetchProduct();
-  }, []);
+    fetchProductAndReviews();
+  }, [productId]);
 
   const showToast = (type: "success" | "error", message: string) => {
     const id = Date.now();
@@ -239,14 +152,19 @@ const ProductDetails = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!product || !selectedPotStyle || !selectedSize) {
-      showToast("error", "Please select size and pot style");
+    if (!product || !selectedPotStyle) {
+      showToast("error", "Please select pot style");
+      return;
+    }
+
+    if (!isAuthenticated) {
+      showToast("error", "Please login to add items to your cart");
       return;
     }
 
     try {
       addToCart({
-        id: parseInt(product.id),
+        id: product._id,
         name: product.name,
         price: product.price,
         image: product.images[0].url,
@@ -264,12 +182,6 @@ const ProductDetails = () => {
 
     try {
       setIsWishlisted(!isWishlisted);
-
-      if (!isWishlisted) {
-        showToast("success", "Plant added to wishlist successfully");
-      } else {
-        showToast("success", "Plant removed from wishlist");
-      }
     } catch (err) {
       showToast("error", "Failed to update wishlist");
     }
@@ -292,14 +204,60 @@ const ProductDetails = () => {
     });
   };
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    showToast("success", "Review submitted successfully");
-    setReviewFormData({
-      rating: 5,
-      comment: "",
-    });
-    setShowWriteReview(false);
+
+    if (!product || !user || !user.id || !user.firstName || !user.lastName) {
+      showToast("error", "User information is incomplete");
+      return;
+    }
+
+    try {
+      // Create the review
+      await reviewService.createReview({
+        productId: product._id,
+        rating: reviewFormData.rating,
+        comment: reviewFormData.comment,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+      });
+
+      // Fetch updated product data
+      const updatedProduct = await productService.getProductById(product._id);
+
+      // Fetch updated reviews
+      const updatedReviews = await reviewService.getProductReviews(product._id);
+
+      // Update the product state with both product data and reviews
+      setProduct({
+        ...updatedProduct,
+        reviews: updatedReviews,
+        reviewsCount: updatedReviews.length,
+        rating:
+          updatedReviews.length > 0
+            ? Number(
+                (
+                  updatedReviews.reduce(
+                    (acc, review) => acc + review.rating,
+                    0
+                  ) / updatedReviews.length
+                ).toFixed(1)
+              )
+            : 0,
+      });
+
+      showToast("success", "Review submitted successfully");
+      setReviewFormData({
+        rating: 5,
+        comment: "",
+      });
+      setShowWriteReview(false);
+    } catch (error) {
+      showToast("error", "Failed to submit review");
+    }
   };
 
   const totalPages = Math.ceil(
@@ -317,6 +275,10 @@ const ProductDetails = () => {
   const handleOpenAllReviews = () => {
     setCurrentPage(1);
     setShowAllReviews(true);
+  };
+
+  const handleWriteReview = (show: boolean) => {
+    setShowWriteReview(show);
   };
 
   if (loading) {
@@ -352,14 +314,11 @@ const ProductDetails = () => {
         <Navbar />
         <main className="flex-1 container mx-auto px-4 sm:px-6 py-4 sm:py-8">
           <div className="text-center">
-            <ExclamationCircleIcon className="mx-auto h-12 w-12 text-red-500" />
-            <h2 className="mt-2 text-lg font-semibold text-gray-900">
-              Plant Not Found
+            <ExclamationCircleIcon className="mx-auto h-20 w-20 text-red-500" />
+            <h2 className="mt-5 text-lg font-semibold text-gray-900">
+              Product Not Found
             </h2>
-            <p className="mt-1 text-gray-500">
-              {error || "This plant could not be found."}
-            </p>
-            <div className="mt-6">
+            <div className="mt-10">
               <Link
                 to="/store"
                 className="text-accent hover:text-accent-dark font-medium"
@@ -374,19 +333,19 @@ const ProductDetails = () => {
     );
   }
 
-  const oldPrice = product.price * 1.5;
+  const oldPrice = product.price * 1.2;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-4 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-12 bg-white rounded-2xl p-4 sm:p-8 shadow-sm">
+      <main className="flex-1 container mx-auto px-4 sm:px-20 py-4 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-0 bg-white rounded-2xl p-4 sm:p-8 shadow-sm">
           {/* Product Images */}
           <div className="space-y-4">
             <div className="relative">
-              <div className="relative aspect-square bg-gray-100 rounded-xl overflow-hidden">
+              <div className="relative aspect-square max-w-xl bg-gray-100 rounded-xl overflow-hidden">
                 <img
                   src={selectedImage}
                   alt={product.name}
@@ -419,24 +378,26 @@ const ProductDetails = () => {
 
               {/* Thumbnail Navigation - Scrollable on mobile */}
               <div className="flex gap-3 mt-2 overflow-x-auto pb-6 snap-x">
-                {product.images.map((image, index) => (
-                  <div key={index} className="flex-shrink-0 p-2">
-                    <button
-                      onClick={() => setSelectedImage(image.url)}
-                      className={`relative block w-20 h-20 sm:w-24 sm:h-24 overflow-hidden border-2 rounded-lg p-1 ${
-                        selectedImage === image.url
-                          ? "border-accent shadow-md"
-                          : "border-gray-200 hover:border-accent/50"
-                      }`}
-                    >
-                      <img
-                        src={image.url}
-                        alt={`${product.name} ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  </div>
-                ))}
+                {product.images
+                  .sort((a, b) => (a.isPrimary ? -1 : b.isPrimary ? 1 : 0))
+                  .map((image, index) => (
+                    <div key={index} className="flex-shrink-0 p-2">
+                      <button
+                        onClick={() => setSelectedImage(image.url)}
+                        className={`relative block w-20 h-20 sm:w-24 sm:h-24 overflow-hidden border-2 rounded-lg p-1 ${
+                          selectedImage === image.url
+                            ? "border-accent shadow-md"
+                            : "border-gray-200 hover:border-accent/50"
+                        }`}
+                      >
+                        <img
+                          src={image.url}
+                          alt={`${product.name} ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>
@@ -445,10 +406,10 @@ const ProductDetails = () => {
           <div className="space-y-4 sm:space-y-6">
             {/* Title and Badges */}
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+              <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1">
                 {product.name}
               </h1>
-              <p className="text-sm italic text-gray-500 mb-3">
+              <p className="text-md italic text-gray-500 mb-3">
                 {product.scientificName}
               </p>
 
@@ -459,7 +420,7 @@ const ProductDetails = () => {
                     {[...Array(5)].map((_, index) => (
                       <StarIconSolid
                         key={index}
-                        className={`h-3 w-3 sm:h-4 sm:w-4 ${
+                        className={`h-3 w-3 sm:h-5 sm:w-5 ${
                           index < Math.floor(product.rating)
                             ? "text-yellow-400"
                             : "text-gray-200"
@@ -467,8 +428,8 @@ const ProductDetails = () => {
                       />
                     ))}
                   </div>
-                  <span className="text-gray-600">
-                    {product.rating} ({product.reviewsCount} reviews)
+                  <span className="text-gray-600 text-sm sm:text-base">
+                    {product.rating.toFixed(1)} ({product.reviewsCount} reviews)
                   </span>
                 </div>
                 <span className="hidden sm:inline text-gray-400">|</span>
@@ -494,7 +455,7 @@ const ProductDetails = () => {
             </div>
 
             {/* Pot Style Selection */}
-            <div className="my-6 mb-12">
+            <div className="my-10 mb-18">
               <label className="block text-sm font-medium text-gray-700 mb-4">
                 POT STYLE:
               </label>
@@ -518,36 +479,6 @@ const ProductDetails = () => {
                     <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs whitespace-nowrap font-medium">
                       {potStyle.name}
                     </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Size Selection */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  PLANT SIZE:
-                </label>
-              </div>
-              <div className="flex flex-wrap gap-2 sm:gap-3">
-                {sizes.map((size) => (
-                  <button
-                    key={size.value}
-                    onClick={() => size.inStock && setSelectedSize(size.value)}
-                    disabled={!size.inStock}
-                    className={`
-                      w-full sm:w-auto px-4 h-12 rounded-xl flex items-center justify-center text-sm sm:text-base
-                      ${
-                        !size.inStock
-                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          : selectedSize === size.value
-                          ? "bg-accent text-white"
-                          : "bg-white border border-gray-200 hover:border-accent text-gray-900"
-                      }
-                    `}
-                  >
-                    {size.label}
                   </button>
                 ))}
               </div>
@@ -707,13 +638,7 @@ const ProductDetails = () => {
                                 Light
                               </h3>
                               <p className="text-sm text-gray-600">
-                                {product.careInfo.lightRequirement === "low" &&
-                                  "Low light tolerant. Place in a spot with bright, indirect light away from windows."}
-                                {product.careInfo.lightRequirement ===
-                                  "medium" &&
-                                  "Medium light. Place in a spot with bright, indirect light."}
-                                {product.careInfo.lightRequirement === "high" &&
-                                  "High light. Place in a bright spot with some direct morning sunlight."}
+                                {product.careInfo.lightRequirement}
                               </p>
                             </div>
                           </div>
@@ -822,13 +747,7 @@ const ProductDetails = () => {
                                 Care Difficulty
                               </h3>
                               <p className="text-sm text-gray-600">
-                                {product.careInfo.difficulty === "beginner" &&
-                                  "Beginner - Easy to care for, very forgiving."}
-                                {product.careInfo.difficulty ===
-                                  "intermediate" &&
-                                  "Intermediate - Needs consistent care but tolerates occasional neglect."}
-                                {product.careInfo.difficulty === "expert" &&
-                                  "Expert - Requires precise and attentive care."}
+                                {product.careInfo.difficulty}
                               </p>
                             </div>
                           </div>
@@ -847,13 +766,14 @@ const ProductDetails = () => {
                             <div className="flex items-center gap-4">
                               <div>
                                 <div className="text-3xl sm:text-4xl font-bold text-gray-900">
-                                  {product.rating}
+                                  {product.rating.toFixed(1)}
                                 </div>
                                 <div className="flex items-center gap-1 mt-1">
                                   {[...Array(5)].map((_, index) => (
                                     <StarIconSolid
                                       key={index}
                                       className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                                        product.reviews.length > 0 &&
                                         index < Math.floor(product.rating)
                                           ? "text-yellow-400"
                                           : "text-gray-200"
@@ -864,16 +784,20 @@ const ProductDetails = () => {
                               </div>
                               <div className="flex-1 min-w-[120px] text-left">
                                 <div className="text-xs sm:text-sm text-gray-500">
-                                  Based on {product.reviews.length} reviews
+                                  {product.reviews.length > 0
+                                    ? `Based on ${product.reviews.length} reviews`
+                                    : "No reviews yet"}
                                 </div>
-                                <div className="mt-1">
-                                  <button
-                                    className="text-xs sm:text-sm text-accent hover:text-accent-dark font-medium"
-                                    onClick={handleOpenAllReviews}
-                                  >
-                                    View all reviews
-                                  </button>
-                                </div>
+                                {product.reviews.length > 0 && (
+                                  <div className="mt-1">
+                                    <button
+                                      className="text-xs sm:text-sm text-accent hover:text-accent-dark font-medium"
+                                      onClick={handleOpenAllReviews}
+                                    >
+                                      View all reviews
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -891,53 +815,78 @@ const ProductDetails = () => {
 
                         {/* Reviews List */}
                         <div className="space-y-6">
-                          {currentReviews?.map((review) => (
-                            <div
-                              key={review.id}
-                              className="border-b pb-4 last:border-b-0"
-                            >
-                              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-2">
-                                <div>
-                                  <div className="flex items-center flex-wrap gap-2">
-                                    <span className="font-medium text-gray-900 text-sm">
-                                      {review.author}
-                                    </span>
-                                    {review.verified && (
-                                      <span className="inline-flex items-center gap-1 text-accent text-xs">
-                                        <CheckIcon className="h-3 w-3" />
-                                        Verified Purchase
+                          {product.reviews.length > 0 ? (
+                            currentReviews?.map((review) => (
+                              <div
+                                key={review._id}
+                                className="border-b pb-4 last:border-b-0"
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-2">
+                                  <div>
+                                    <div className="flex items-center flex-wrap gap-2">
+                                      <span className="font-medium text-gray-900 text-sm">
+                                        {review.name}
                                       </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <div className="flex">
-                                      {[...Array(5)].map((_, index) => (
-                                        <StarIconSolid
-                                          key={index}
-                                          className={`h-3 w-3 ${
-                                            index < review.rating
-                                              ? "text-yellow-400"
-                                              : "text-gray-200"
-                                          }`}
-                                        />
-                                      ))}
+                                      {review.verified && (
+                                        <span className="inline-flex items-center gap-1 text-accent text-xs">
+                                          <CheckIcon className="h-3 w-3" />
+                                          Verified Purchase
+                                        </span>
+                                      )}
                                     </div>
-                                    <span className="text-xs text-gray-500">
-                                      {new Date(
-                                        review.date
-                                      ).toLocaleDateString()}
-                                    </span>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <div className="flex">
+                                        {[...Array(5)].map((_, index) => (
+                                          <StarIconSolid
+                                            key={index}
+                                            className={`h-3 w-3 ${
+                                              index < review.rating
+                                                ? "text-yellow-400"
+                                                : "text-gray-200"
+                                            }`}
+                                          />
+                                        ))}
+                                      </div>
+                                      <span className="text-xs text-gray-500">
+                                        {new Date(
+                                          review.createdAt
+                                        ).toLocaleDateString()}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
+                                <p className="text-sm text-gray-600 mt-2">
+                                  {review.comment}
+                                </p>
                               </div>
-                              <p className="text-sm text-gray-600 mt-2">
-                                {review.comment}
+                            ))
+                          ) : (
+                            <div className="text-center py-8">
+                              <div className="mx-auto h-16 w-16 text-gray-300">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={1.5}
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"
+                                  />
+                                </svg>
+                              </div>
+                              <h3 className="mt-2 text-lg font-medium text-gray-900">
+                                No reviews yet
+                              </h3>
+                              <p className="mt-1 text-sm text-gray-500">
+                                Be the first to review this product!
                               </p>
                             </div>
-                          ))}
+                          )}
 
-                          {/*  */}
-                          {totalPages > 1 && (
+                          {product.reviews.length > 0 && totalPages > 1 && (
                             <div className="flex justify-center items-center gap-2 pt-4">
                               <button
                                 onClick={() =>
@@ -1078,12 +1027,12 @@ const ProductDetails = () => {
 
             <div className="space-y-6">
               {product.reviews.map((review) => (
-                <div key={review.id} className="border-b pb-4 last:border-b-0">
+                <div key={review._id} className="border-b pb-4 last:border-b-0">
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-2">
                     <div>
                       <div className="flex items-center flex-wrap gap-2">
                         <span className="font-medium text-gray-900">
-                          {review.author}
+                          {review.name}
                         </span>
                         {review.verified && (
                           <span className="inline-flex items-center gap-1 text-accent text-xs">
@@ -1106,13 +1055,10 @@ const ProductDetails = () => {
                           ))}
                         </div>
                         <span className="text-xs text-gray-500">
-                          {new Date(review.date).toLocaleDateString()}
+                          {new Date(review.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
-                    <button className="text-xs text-gray-500 hover:text-accent self-start">
-                      Helpful ({review.likes})
-                    </button>
                   </div>
                   <p className="text-sm text-gray-600 mt-2">{review.comment}</p>
                 </div>
@@ -1134,7 +1080,7 @@ const ProductDetails = () => {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold">Write a Review</h3>
               <button
-                onClick={() => setShowWriteReview(false)}
+                onClick={() => handleWriteReview(false)}
                 className="text-gray-400 hover:text-gray-500"
               >
                 <svg

@@ -1,8 +1,11 @@
 import express from "express";
 import mongoose from "mongoose";
+
 import usersRoute from "./routes/usersRoute.js";
 import authRoutes from "./routes/authRoutes.js";
 import productsRoute from "./routes/productsRoute.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
+
 import verifyToken from "./middleware/verifyToken.js";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -16,7 +19,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Middleware de logging pentru toate cererile
 app.use((req, res, next) => {
   console.log("=====================================================");
   console.log(
@@ -25,12 +27,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// API routes with /api prefix
 app.use("/api/auth", authRoutes);
 app.use("/api/users", verifyToken, usersRoute);
 app.use("/api/products", productsRoute);
+app.use("/api/reviews", reviewRoutes);
 
-// Handler pentru rute inexistente
 app.use((req, res) => {
   console.log(`⚠️ Rută inexistentă: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ message: "Route not found" });
