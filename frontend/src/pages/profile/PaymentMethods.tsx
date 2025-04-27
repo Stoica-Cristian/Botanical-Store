@@ -4,39 +4,34 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ToastContainer, { ToastData } from "../../components/ui/ToastContainer";
-
-interface PaymentMethod {
-  id: number;
-  cardType: string;
-  lastFour: string;
-  expiryDate: string;
-  isDefault: boolean;
-}
+import { PaymentMethod } from "../../types/paymentMethod";
+import { paymentMethodService } from "../../services/paymentMethodService";
 
 const PaymentMethods = () => {
   const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
-    {
-      id: 1,
-      cardType: "Visa",
-      lastFour: "4242",
-      expiryDate: "12/25",
-      isDefault: true,
-    },
-    {
-      id: 2,
-      cardType: "Mastercard",
-      lastFour: "8888",
-      expiryDate: "09/24",
-      isDefault: false,
-    },
-  ]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPaymentMethods();
+  }, []);
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const data = await paymentMethodService.getAll();
+      setPaymentMethods(data);
+    } catch (error) {
+      showToast("error", "Failed to load payment methods");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const showToast = (type: "success" | "error", message: string) => {
     const id = Date.now();
@@ -49,39 +44,81 @@ const PaymentMethods = () => {
     );
   };
 
-  const handleSetDefault = (id: number) => {
-    setPaymentMethods((prevMethods) =>
-      prevMethods.map((method) => ({
-        ...method,
-        isDefault: method.id === id,
-      }))
-    );
-    showToast("success", "Default payment method updated");
+  const handleSetDefault = async (id: string) => {
+    try {
+      await paymentMethodService.setDefault(id);
+      setPaymentMethods((prevMethods) =>
+        prevMethods.map((method) => ({
+          ...method,
+          isDefault: method._id === id,
+        }))
+      );
+      showToast("success", "Default payment method updated");
+    } catch (error) {
+      showToast("error", "Failed to update default payment method");
+    }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string) => {
     if (deleteConfirm === id) {
-      const methodToDelete = paymentMethods.find((m) => m.id === id);
-      if (methodToDelete?.isDefault) {
-        showToast("error", "Cannot delete default payment method");
-        return;
+      try {
+        const methodToDelete = paymentMethods.find((m) => m._id === id);
+        if (methodToDelete?.isDefault) {
+          showToast("error", "Cannot delete default payment method");
+          return;
+        }
+        await paymentMethodService.delete(id);
+        setPaymentMethods((prevMethods) =>
+          prevMethods.filter((method) => method._id !== id)
+        );
+        showToast("success", "Payment method removed successfully");
+        setDeleteConfirm(null);
+      } catch (error) {
+        showToast("error", "Failed to delete payment method");
+        setDeleteConfirm(null);
       }
-      setPaymentMethods((prevMethods) =>
-        prevMethods.filter((method) => method.id !== id)
-      );
-      showToast("success", "Payment method removed successfully");
-      setDeleteConfirm(null);
     } else {
       setDeleteConfirm(id);
       setTimeout(() => setDeleteConfirm(null), 3000);
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      const newPaymentMethod = await paymentMethodService.create({
+        cardType: formData.get("cardType") as string,
+        lastFour: formData.get("lastFour") as string,
+        expiryDate: `${formData.get("expiryMonth")}/${formData.get(
+          "expiryYear"
+        )}`,
+        isDefault: paymentMethods.length === 0,
+      });
+
+      if (newPaymentMethod) {
+        setPaymentMethods((prev) => [...prev, newPaymentMethod]);
+        setIsAddCardModalOpen(false);
+        showToast("success", "Payment method added successfully");
+        e.currentTarget.reset();
+      }
+    } catch (error) {}
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-8 min-h-[400px]">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -109,20 +146,13 @@ const PaymentMethods = () => {
                   No payment methods
                 </h3>
                 <p className="text-gray-500 mb-4">
-                  Add a credit or debit card to start shopping
+                  Add a credit or debit card and start shopping
                 </p>
-                <button
-                  onClick={() => setIsAddCardModalOpen(true)}
-                  className="btn btn-accent text-white gap-2 hover:bg-accent/90"
-                >
-                  <PlusIcon className="h-5 w-5" />
-                  Add New Card
-                </button>
               </div>
             ) : (
               paymentMethods.map((method) => (
                 <div
-                  key={method.id}
+                  key={method._id}
                   className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow duration-200"
                 >
                   <div className="flex items-center justify-between">
@@ -157,27 +187,29 @@ const PaymentMethods = () => {
                     <div className="flex items-center gap-2">
                       {!method.isDefault && (
                         <button
-                          onClick={() => handleSetDefault(method.id)}
+                          onClick={() => handleSetDefault(method._id)}
                           className="btn btn-sm btn-ghost hover:bg-accent/5 hover:text-accent"
                         >
                           Set as Default
                         </button>
                       )}
                       <button
-                        onClick={() => handleDelete(method.id)}
+                        onClick={() => handleDelete(method._id)}
                         className={`btn btn-sm ${
-                          deleteConfirm === method.id
+                          deleteConfirm === method._id
                             ? "btn-error text-white"
                             : "btn-ghost text-red-500 hover:bg-red-50"
                         }`}
-                        disabled={method.isDefault}
                         title={
                           method.isDefault
                             ? "Cannot delete default payment method"
-                            : ""
+                            : deleteConfirm === method._id
+                            ? "Click again to confirm deletion"
+                            : "Delete payment method"
                         }
                       >
                         <TrashIcon className="h-5 w-5" />
+                        {deleteConfirm === method._id && " Confirm"}
                       </button>
                     </div>
                   </div>
@@ -202,38 +234,77 @@ const PaymentMethods = () => {
               </button>
             </div>
 
-            <form className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Card Type
+                </label>
+                <select
+                  name="cardType"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  required
+                >
+                  <option value="">Select card type</option>
+                  <option value="Visa">Visa</option>
+                  <option value="Mastercard">Mastercard</option>
+                  <option value="American Express">American Express</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Card Number
                 </label>
                 <input
                   type="text"
-                  placeholder="1234 5678 9012 3456"
+                  name="lastFour"
+                  placeholder="Last 4 digits"
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  required
+                  maxLength={4}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Expiry Date
+                    Expiry Month
                   </label>
-                  <input
-                    type="text"
-                    placeholder="MM/YY"
+                  <select
+                    name="expiryMonth"
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-                  />
+                    required
+                  >
+                    <option value="">Month</option>
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const month = (i + 1).toString().padStart(2, "0");
+                      return (
+                        <option key={month} value={month}>
+                          {month}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    CVC
+                    Expiry Year
                   </label>
-                  <input
-                    type="text"
-                    placeholder="123"
+                  <select
+                    name="expiryYear"
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-                  />
+                    required
+                  >
+                    <option value="">Year</option>
+                    {Array.from({ length: 10 }, (_, i) => {
+                      const year = new Date().getFullYear() + i;
+                      return (
+                        <option key={year} value={year.toString().slice(-2)}>
+                          {year}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
               </div>
 

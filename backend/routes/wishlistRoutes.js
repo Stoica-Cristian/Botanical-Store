@@ -3,9 +3,10 @@ import verifyToken from "../middleware/verifyToken.js";
 import User from "../models/userModel.js";
 
 const router = express.Router();
+router.use(verifyToken);
 
 // Get user's wishlist
-router.get("/", verifyToken, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     console.log(
       `📥 RUTA: /wishlist - Obținere wishlist pentru user ${req.user._id}`
@@ -35,7 +36,7 @@ router.get("/", verifyToken, async (req, res) => {
 });
 
 // Add product to wishlist
-router.post("/:productId", verifyToken, async (req, res) => {
+router.post("/:productId", async (req, res) => {
   try {
     console.log(
       `➕ RUTA: /wishlist/${req.params.productId} - Adăugare produs în wishlist`
@@ -64,7 +65,7 @@ router.post("/:productId", verifyToken, async (req, res) => {
 });
 
 // Remove product from wishlist
-router.delete("/:productId", verifyToken, async (req, res) => {
+router.delete("/:productId", async (req, res) => {
   try {
     console.log(
       `🗑️ RUTA: /wishlist/${req.params.productId} - Ștergere produs din wishlist`
@@ -94,7 +95,7 @@ router.delete("/:productId", verifyToken, async (req, res) => {
 });
 
 // Check if product is in wishlist
-router.get("/check/:productId", verifyToken, async (req, res) => {
+router.get("/check/:productId", async (req, res) => {
   try {
     console.log(
       `🔍 RUTA: /wishlist/check/${req.params.productId} - Verificare produs în wishlist`

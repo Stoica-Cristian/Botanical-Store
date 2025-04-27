@@ -4,45 +4,34 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ToastContainer, { ToastData } from "../../components/ui/ToastContainer";
-
-interface Address {
-  id: number;
-  name: string;
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  isDefault: boolean;
-}
+import { Address } from "../../types/address";
+import { addressService } from "../../services/addressService";
 
 const Addresses = () => {
   const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: 1,
-      name: "Home",
-      street: "123 Main Street",
-      city: "Bucharest",
-      state: "Sector 1",
-      zipCode: "012345",
-      isDefault: true,
-    },
-    {
-      id: 2,
-      name: "Office",
-      street: "456 Business Avenue",
-      city: "Bucharest",
-      state: "Sector 2",
-      zipCode: "023456",
-      isDefault: false,
-    },
-  ]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAddresses();
+  }, []);
+
+  const fetchAddresses = async () => {
+    try {
+      const data = await addressService.getAll();
+      setAddresses(data);
+    } catch (error) {
+      showToast("error", "Failed to load addresses");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const showToast = (type: "success" | "error", message: string) => {
     const id = Date.now();
@@ -55,39 +44,81 @@ const Addresses = () => {
     );
   };
 
-  const handleSetDefault = (id: number) => {
-    setAddresses((prevAddresses) =>
-      prevAddresses.map((address) => ({
-        ...address,
-        isDefault: address.id === id,
-      }))
-    );
-    showToast("success", "Default delivery address updated");
+  const handleSetDefault = async (id: string) => {
+    try {
+      await addressService.setDefault(id);
+      setAddresses((prevAddresses) =>
+        prevAddresses.map((address) => ({
+          ...address,
+          isDefault: address._id === id,
+        }))
+      );
+      showToast("success", "Default delivery address updated");
+    } catch (error) {
+      showToast("error", "Failed to update default address");
+    }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string) => {
     if (deleteConfirm === id) {
-      const addressToDelete = addresses.find((a) => a.id === id);
-      if (addressToDelete?.isDefault) {
-        showToast("error", "Cannot delete default address");
-        return;
+      try {
+        const addressToDelete = addresses.find((a) => a._id === id);
+        if (addressToDelete?.isDefault) {
+          showToast("error", "Cannot delete default address");
+          return;
+        }
+        await addressService.delete(id);
+        setAddresses((prevAddresses) =>
+          prevAddresses.filter((address) => address._id !== id)
+        );
+        showToast("success", "Address removed successfully");
+        setDeleteConfirm(null);
+      } catch (error) {
+        showToast("error", "Failed to delete address");
+        setDeleteConfirm(null);
       }
-      setAddresses((prevAddresses) =>
-        prevAddresses.filter((address) => address.id !== id)
-      );
-      showToast("success", "Address removed successfully");
-      setDeleteConfirm(null);
     } else {
       setDeleteConfirm(id);
       setTimeout(() => setDeleteConfirm(null), 3000);
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      const newAddress = await addressService.create({
+        name: formData.get("name") as string,
+        street: formData.get("street") as string,
+        city: formData.get("city") as string,
+        state: formData.get("state") as string,
+        zipCode: formData.get("zipCode") as string,
+        isDefault: addresses.length === 0,
+      });
+
+      if (newAddress) {
+        setAddresses((prev) => [...prev, newAddress]);
+        setIsAddAddressModalOpen(false);
+        showToast("success", "Address added successfully");
+        e.currentTarget.reset();
+      }
+    } catch (error) {}
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-8 min-h-[400px]">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -115,20 +146,13 @@ const Addresses = () => {
                   No addresses yet
                 </h3>
                 <p className="text-gray-500 mb-4">
-                  Add a delivery address to start shopping
+                  Add a delivery address and start shopping
                 </p>
-                <button
-                  onClick={() => setIsAddAddressModalOpen(true)}
-                  className="btn btn-accent text-white gap-2 hover:bg-accent/90"
-                >
-                  <PlusIcon className="h-5 w-5" />
-                  Add New Address
-                </button>
               </div>
             ) : (
               addresses.map((address) => (
                 <div
-                  key={address.id}
+                  key={address._id}
                   className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow duration-200"
                 >
                   <div className="flex items-center justify-between">
@@ -166,27 +190,29 @@ const Addresses = () => {
                     <div className="flex items-center gap-2">
                       {!address.isDefault && (
                         <button
-                          onClick={() => handleSetDefault(address.id)}
+                          onClick={() => handleSetDefault(address._id)}
                           className="btn btn-sm btn-ghost hover:bg-accent/5 hover:text-accent"
                         >
                           Set as Default
                         </button>
                       )}
                       <button
-                        onClick={() => handleDelete(address.id)}
+                        onClick={() => handleDelete(address._id)}
                         className={`btn btn-sm ${
-                          deleteConfirm === address.id
+                          deleteConfirm === address._id
                             ? "btn-error text-white"
                             : "btn-ghost text-red-500 hover:bg-red-50"
                         }`}
-                        disabled={address.isDefault}
                         title={
                           address.isDefault
                             ? "Cannot delete default address"
-                            : ""
+                            : deleteConfirm === address._id
+                            ? "Click again to confirm deletion"
+                            : "Delete address"
                         }
                       >
                         <TrashIcon className="h-5 w-5" />
+                        {deleteConfirm === address._id && " Confirm"}
                       </button>
                     </div>
                   </div>
@@ -213,15 +239,17 @@ const Addresses = () => {
               </button>
             </div>
 
-            <form className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Address Name
                 </label>
                 <input
                   type="text"
+                  name="name"
                   placeholder="e.g. Home, Office"
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  required
                 />
               </div>
 
@@ -231,8 +259,10 @@ const Addresses = () => {
                 </label>
                 <input
                   type="text"
+                  name="street"
                   placeholder="Street address"
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  required
                 />
               </div>
 
@@ -243,8 +273,10 @@ const Addresses = () => {
                   </label>
                   <input
                     type="text"
+                    name="city"
                     placeholder="City"
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    required
                   />
                 </div>
                 <div>
@@ -253,8 +285,10 @@ const Addresses = () => {
                   </label>
                   <input
                     type="text"
+                    name="state"
                     placeholder="State or sector"
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    required
                   />
                 </div>
               </div>
@@ -265,8 +299,10 @@ const Addresses = () => {
                 </label>
                 <input
                   type="text"
+                  name="zipCode"
                   placeholder="ZIP code"
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                  required
                 />
               </div>
 

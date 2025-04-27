@@ -6,8 +6,9 @@ import authRoutes from "./routes/authRoutes.js";
 import productsRoute from "./routes/productsRoute.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
+import addressRoutes from "./routes/addressRoutes.js";
+import paymentMethodRoutes from "./routes/paymentMethodRoutes.js";
 
-import verifyToken from "./middleware/verifyToken.js";
 import cors from "cors";
 import dotenv from "dotenv";
 
@@ -29,11 +30,12 @@ app.use((req, res, next) => {
 });
 
 app.use("/api/auth", authRoutes);
-app.use("/api/users", verifyToken, usersRoute);
+app.use("/api/users", usersRoute);
 app.use("/api/products", productsRoute);
 app.use("/api/reviews", reviewRoutes);
-app.use("/api/wishlist", verifyToken, wishlistRoutes);
-
+app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/payment-methods", paymentMethodRoutes);
 app.use((req, res) => {
   console.log(`⚠️ Rută inexistentă: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ message: "Route not found" });

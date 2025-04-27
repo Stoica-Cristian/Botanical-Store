@@ -120,12 +120,6 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
 router.put("/:id", verifyToken, isAdmin, async (req, res) => {
   console.log(`🔄 RUTA: /products/${req.params.id} (PUT) - Actualizare produs`);
   try {
-    // Check if user is admin
-    if (req.userRole !== "admin") {
-      console.log(`❌ Acces interzis: Utilizatorul nu este admin`);
-      return res.status(403).json({ message: "Access denied" });
-    }
-
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     });
