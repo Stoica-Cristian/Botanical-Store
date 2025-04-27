@@ -5,15 +5,18 @@ import {
   CurrencyDollarIcon,
   StarIcon,
   TagIcon,
-  FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { Product } from "../../types/product";
 import ProductCard from "./ProductCard";
-import { productService } from "../../services/productService";
+import api from "../../services/api";
 
 interface ProductGridProps {
   getFilteredProducts: (products: Product[]) => Product[];
 }
+
+const CACHE_KEY = "products_cache";
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const BACKGROUND_REVALIDATION_INTERVAL = 2 * 60 * 1000; // 2 minutes
 
 const ProductGrid = ({ getFilteredProducts }: ProductGridProps) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -26,30 +29,82 @@ const ProductGrid = ({ getFilteredProducts }: ProductGridProps) => {
   const gridRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
 
-  // Fetch products from backend
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
 
-        try {
-          const products = await productService.getAllProducts();
-          setAllProducts(products);
-        } catch (err) {
-          console.error("Failed to fetch products:", err);
-          setError("Failed to load products. Please try again later.");
-        } finally {
+      // Check cache
+      const cachedData = localStorage.getItem(CACHE_KEY);
+      if (cachedData) {
+        const { data, timestamp } = JSON.parse(cachedData);
+        const isCacheValid = Date.now() - timestamp < CACHE_DURATION;
+
+        if (isCacheValid) {
+          setAllProducts(data);
           setLoading(false);
+          return;
         }
-      } catch (err) {
-        console.error("Failed to fetch products:", err);
-        setError("Failed to load products. Please try again later.");
-      } finally {
-        setLoading(false);
       }
-    };
 
+      // Fetch fresh data
+      const response = await api.get("/api/products");
+      const newProducts = response.data;
+
+      // Update cache
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          data: newProducts,
+          timestamp: Date.now(),
+        })
+      );
+
+      setAllProducts(newProducts);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setError("Failed to load products. Please try again later.");
+      // Fallback to cached data if available
+      const cachedData = localStorage.getItem(CACHE_KEY);
+      if (cachedData) {
+        const { data } = JSON.parse(cachedData);
+        setAllProducts(data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const revalidateCache = async () => {
+    try {
+      const response = await api.get("/api/products");
+      const newProducts = response.data;
+
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          data: newProducts,
+          timestamp: Date.now(),
+        })
+      );
+
+      setAllProducts(newProducts);
+    } catch (error) {
+      console.error("Error revalidating cache:", error);
+    }
+  };
+
+  useEffect(() => {
+    // Initial fetch
     fetchProducts();
+
+    // Set up background revalidation
+    const revalidationInterval = setInterval(
+      revalidateCache,
+      BACKGROUND_REVALIDATION_INTERVAL
+    );
+
+    // Cleanup
+    return () => clearInterval(revalidationInterval);
   }, []);
 
   useEffect(() => {

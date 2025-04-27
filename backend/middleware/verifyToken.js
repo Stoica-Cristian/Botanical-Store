@@ -16,15 +16,13 @@ const verifyToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    req.userId = decoded.id;
-
     const user = await User.findById(decoded.id);
     if (!user) {
       console.log(`❌ Utilizator negăsit pentru ID: ${decoded.id}`);
       return res.status(401).json({ message: "User not found" });
     }
 
-    req.userRole = user.role || "user";
+    req.user = user;
     next();
   } catch (err) {
     console.error(`❌ Eroare la verificarea token-ului: ${err.message}`);

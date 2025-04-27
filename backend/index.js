@@ -5,6 +5,7 @@ import usersRoute from "./routes/usersRoute.js";
 import authRoutes from "./routes/authRoutes.js";
 import productsRoute from "./routes/productsRoute.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import wishlistRoutes from "./routes/wishlistRoutes.js";
 
 import verifyToken from "./middleware/verifyToken.js";
 import cors from "cors";
@@ -31,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", verifyToken, usersRoute);
 app.use("/api/products", productsRoute);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/wishlist", verifyToken, wishlistRoutes);
 
 app.use((req, res) => {
   console.log(`⚠️ Rută inexistentă: ${req.method} ${req.originalUrl}`);

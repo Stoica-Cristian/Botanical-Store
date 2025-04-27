@@ -25,7 +25,7 @@ const menuActiveClass = "text-accent bg-accent/10 rounded-lg";
 const Navbar = () => {
   const location = useLocation();
   const { isAuthenticated, user, logout } = useAuth();
-  const { wishlistItems } = useWishlist();
+  const { wishlist } = useWishlist();
   const { totalItems } = useCart();
 
   const fullName = user
@@ -140,9 +140,9 @@ const Navbar = () => {
                 data-tip="Wishlist"
               >
                 <div className="indicator -space-x-2">
-                  {wishlistItems.length > 0 && (
+                  {wishlist.length > 0 && (
                     <span className="indicator-item badge badge-accent scale-60">
-                      {wishlistItems.length}
+                      {wishlist.length}
                     </span>
                   )}
                   <svg
@@ -270,9 +270,9 @@ const Navbar = () => {
                       className="flex items-center gap-3 py-3 rounded-lg"
                     >
                       <div className="indicator">
-                        {wishlistItems.length > 0 && (
+                        {wishlist.length > 0 && (
                           <span className="indicator-item badge badge-accent scale-75">
-                            {wishlistItems.length}
+                            {wishlist.length}
                           </span>
                         )}
                         <svg

@@ -1,3 +1,5 @@
+import { Product } from "./product";
+
 export interface User {
   id: string;
   email: string;
@@ -11,4 +13,5 @@ export interface User {
   updatedAt?: string;
   lastLogin?: string;
   status?: "active" | "inactive";
+  wishlist?: Product[];
 }

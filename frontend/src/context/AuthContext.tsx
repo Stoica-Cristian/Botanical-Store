@@ -60,6 +60,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             phoneNumber: userData.phoneNumber,
             createdAt: userData.createdAt,
             updatedAt: userData.updatedAt,
+            wishlist: userData.wishlist || [],
           });
         } catch (err) {
           localStorage.removeItem("token");
@@ -93,6 +94,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           phoneNumber: userData.phoneNumber,
           createdAt: userData.createdAt,
           updatedAt: userData.updatedAt,
+          wishlist: userData.wishlist || [],
         };
 
         setUser(userObj);

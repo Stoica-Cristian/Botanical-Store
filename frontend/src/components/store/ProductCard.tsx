@@ -49,14 +49,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
     const productInWishlist = isInWishlist(productId);
 
     if (!productInWishlist) {
-      addToWishlist({
-        id: productId,
-        name,
-        price,
-        image:
-          typeof productImage === "string" ? productImage : productImage.url,
-        alt: name,
-      });
+      addToWishlist(product);
     } else {
       removeFromWishlist(productId);
     }

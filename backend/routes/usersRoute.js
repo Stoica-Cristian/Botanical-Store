@@ -9,10 +9,10 @@ const router = express.Router();
 router.get("/profile", async (req, res) => {
   console.log("👤 RUTA: /users/profile - Obținere profil utilizator");
   try {
-    const user = await User.findById(req.userId).select("-password");
+    const user = await User.findById(req.user._id).select("-password");
 
     if (!user) {
-      console.log(`❌ Profil negăsit: ID=${req.userId}`);
+      console.log(`❌ Profil negăsit: ID=${req.user._id}`);
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -35,13 +35,15 @@ router.put("/profile", async (req, res) => {
     if (req.body.avatar) updates.avatar = req.body.avatar;
     if (req.body.phoneNumber) updates.phoneNumber = req.body.phoneNumber;
 
-    const user = await User.findByIdAndUpdate(req.userId, updates, {
+    const user = await User.findByIdAndUpdate(req.user._id, updates, {
       new: true,
       select: "-password",
     });
 
     if (!user) {
-      console.log(`❌ Utilizator negăsit pentru actualizare: ID=${req.userId}`);
+      console.log(
+        `❌ Utilizator negăsit pentru actualizare: ID=${req.user._id}`
+      );
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -67,8 +69,8 @@ router.put("/password", async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.userId);
-    console.log("req.userId", req.userId);
+    const user = await User.findById(req.user._id);
+    console.log("req.user._id", req.user._id);
     console.log("user", user);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -207,15 +209,15 @@ router.delete("/profile", async (req, res) => {
     "🗑️ RUTA: /users/profile (DELETE) - Ștergere profil utilizator curent"
   );
   try {
-    const deletedUser = await User.findByIdAndDelete(req.userId);
+    const deletedUser = await User.findByIdAndDelete(req.user._id);
 
     if (!deletedUser) {
-      console.log(`❌ Utilizatorul cu ID-ul ${req.userId} nu a fost găsit`);
+      console.log(`❌ Utilizatorul cu ID-ul ${req.user._id} nu a fost găsit`);
       return res.status(404).json({ message: "User not found" });
     }
 
     console.log(
-      `✅ Utilizatorul cu ID-ul ${req.userId} a fost șters cu succes`
+      `✅ Utilizatorul cu ID-ul ${req.user._id} a fost șters cu succes`
     );
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {

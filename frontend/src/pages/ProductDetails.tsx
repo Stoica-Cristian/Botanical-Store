@@ -182,13 +182,7 @@ const ProductDetails = () => {
     const productInWishlist = isInWishlist(product._id);
 
     if (!productInWishlist) {
-      addToWishlist({
-        id: product._id,
-        name: product.name,
-        price: product.price,
-        image: product.images[0].url,
-        alt: product.images[0].alt,
-      });
+      addToWishlist(product);
     } else {
       removeFromWishlist(product._id);
     }

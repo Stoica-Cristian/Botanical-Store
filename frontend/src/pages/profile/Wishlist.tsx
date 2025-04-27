@@ -19,7 +19,7 @@ const Wishlist = () => {
   const [sortOrder, setSortOrder] = useState("asc");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
-  const { wishlistItems, removeFromWishlist } = useWishlist();
+  const { wishlist, removeFromWishlist, isLoading } = useWishlist();
 
   const showToast = (type: "success" | "error", message: string) => {
     const id = Date.now();
@@ -35,7 +35,7 @@ const Wishlist = () => {
   const handleDelete = async (id: string) => {
     if (deleteConfirm === id) {
       try {
-        const deletedItem = wishlistItems.find((item) => item.id === id);
+        const deletedItem = wishlist.find((item) => item._id === id);
         removeFromWishlist(id);
         setDeleteConfirm(null);
 
@@ -57,33 +57,26 @@ const Wishlist = () => {
     }
   };
 
-  const wishlistProducts: Product[] = wishlistItems.map((item) => ({
-    _id: item.id,
-    name: item.name,
-    price: item.price,
-    images: [{ url: item.image, alt: item.name, isPrimary: true }],
-    rating: 0,
-    reviewsCount: 0,
-    reviews: [],
-    category: "",
-    description: "",
-    stock: 0,
-    scientificName: "",
-    specifications: [],
-    features: [],
-    careInfo: {
-      lightRequirement: "",
-      wateringFrequency: "",
-      temperature: "",
-      humidity: "",
-      fertilizing: "",
-      difficulty: "",
-    },
-    sizes: [],
-    potStyles: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
+  const wishlistProducts: Product[] = Array.isArray(wishlist)
+    ? wishlist.map((item) => ({
+        _id: item._id,
+        name: item.name,
+        price: item.price,
+        images: item.images,
+        rating: item.rating,
+        reviewsCount: item.reviewsCount,
+        reviews: item.reviews,
+        category: item.category,
+        description: item.description,
+        stock: item.stock,
+        scientificName: item.scientificName,
+        specifications: item.specifications,
+        features: item.features,
+        careInfo: item.careInfo,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      }))
+    : [];
 
   // Filter and sort items
   const filteredItems = wishlistProducts
@@ -104,6 +97,18 @@ const Wishlist = () => {
       }
       return 0;
     });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Navbar />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <div className="text-center">Loading...</div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
