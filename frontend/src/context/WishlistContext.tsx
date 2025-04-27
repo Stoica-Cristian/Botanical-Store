@@ -7,7 +7,7 @@ import {
 } from "react";
 
 type WishlistItem = {
-  id: number;
+  id: string;
   name: string;
   price: number;
   image: string;
@@ -17,8 +17,8 @@ type WishlistItem = {
 type WishlistContextType = {
   wishlistItems: WishlistItem[];
   addToWishlist: (item: WishlistItem) => void;
-  removeFromWishlist: (id: number) => void;
-  isInWishlist: (id: number) => boolean;
+  removeFromWishlist: (id: string) => void;
+  isInWishlist: (id: string) => boolean;
   clearWishlist: () => void;
 };
 
@@ -64,11 +64,11 @@ export const WishlistProvider = ({ children }: WishlistProviderProps) => {
     });
   };
 
-  const removeFromWishlist = (id: number) => {
+  const removeFromWishlist = (id: string) => {
     setWishlistItems((prevItems) => prevItems.filter((item) => item.id !== id));
   };
 
-  const isInWishlist = (id: number) => {
+  const isInWishlist = (id: string) => {
     return wishlistItems.some((item) => item.id === id);
   };
 

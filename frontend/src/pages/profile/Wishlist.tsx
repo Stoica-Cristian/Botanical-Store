@@ -17,7 +17,7 @@ const Wishlist = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const { wishlistItems, removeFromWishlist } = useWishlist();
 
@@ -32,7 +32,7 @@ const Wishlist = () => {
     );
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (deleteConfirm === id) {
       try {
         const deletedItem = wishlistItems.find((item) => item.id === id);
@@ -58,13 +58,31 @@ const Wishlist = () => {
   };
 
   const wishlistProducts: Product[] = wishlistItems.map((item) => ({
-    id: item.id,
+    _id: item.id,
     name: item.name,
     price: item.price,
-    image: item.image,
-    rating: 5,
-    reviewCount: 0,
+    images: [{ url: item.image, alt: item.name, isPrimary: true }],
+    rating: 0,
+    reviewsCount: 0,
+    reviews: [],
     category: "",
+    description: "",
+    stock: 0,
+    scientificName: "",
+    specifications: [],
+    features: [],
+    careInfo: {
+      lightRequirement: "",
+      wateringFrequency: "",
+      temperature: "",
+      humidity: "",
+      fertilizing: "",
+      difficulty: "",
+    },
+    sizes: [],
+    potStyles: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }));
 
   // Filter and sort items
@@ -91,7 +109,7 @@ const Wishlist = () => {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
-      <main className="flex-1 container mx-auto px-15 py-8 my-10">
+      <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto">
           {/* Header Section */}
           <div className="flex flex-col gap-4 mb-6">
@@ -161,24 +179,24 @@ const Wishlist = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredItems.map((item) => (
-                <div key={item.id} className="relative group">
-                  <ProductCard {...item} />
-                  <div className="absolute top-4 right-4 flex space-x-2">
+              {filteredItems.map((product) => (
+                <div key={product._id} className="relative group">
+                  <ProductCard product={product} />
+                  <div className="absolute top-4 right-4">
                     <button
                       className={`p-2 rounded-full shadow-md transition-colors ${
-                        deleteConfirm === item.id
+                        deleteConfirm === product._id
                           ? "bg-red-500 hover:bg-red-600"
                           : "bg-white hover:bg-red-50"
                       }`}
                       onClick={(e) => {
                         e.preventDefault();
-                        handleDelete(item.id);
+                        handleDelete(product._id);
                       }}
                     >
                       <TrashIcon
                         className={`h-5 w-5 ${
-                          deleteConfirm === item.id
+                          deleteConfirm === product._id
                             ? "text-white"
                             : "text-red-500"
                         }`}

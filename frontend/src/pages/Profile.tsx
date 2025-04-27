@@ -23,7 +23,12 @@ interface UserProfile extends User {
 }
 
 const Profile = () => {
-  const { user: authUser, loading: authLoading, isAuthenticated } = useAuth();
+  const {
+    user: authUser,
+    loading: authLoading,
+    isAuthenticated,
+    updateUser,
+  } = useAuth();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,6 +141,7 @@ const Profile = () => {
       const response = await userService.updateProfile(profileData);
 
       if (response && response.status === 200) {
+        updateUser(profileData);
         setIsEditModalOpen(false);
         showToast("success", "Profile updated successfully");
       } else {

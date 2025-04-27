@@ -99,7 +99,6 @@ const ProductGrid = ({ getFilteredProducts }: ProductGridProps) => {
   const totalPages = Math.ceil(sortedProducts.length / productsPerPage);
 
   const sortOptions = [
-    { value: "featured", label: "Featured", icon: FunnelIcon },
     { value: "price", label: "Price", icon: CurrencyDollarIcon },
     { value: "rating", label: "Rating", icon: StarIcon },
     { value: "name", label: "Name", icon: TagIcon },

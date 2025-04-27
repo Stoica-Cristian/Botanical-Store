@@ -17,6 +17,7 @@ interface AuthContextType {
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateUser: (userData: Partial<User>) => void;
 }
 
 // Create context with default values
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   signup: async () => {},
   logout: () => {},
   isAuthenticated: false,
+  updateUser: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -122,6 +124,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUser(null);
   };
 
+  const updateUser = (userData: Partial<User>) => {
+    setUser((prevUser) => {
+      if (!prevUser) return null;
+      return { ...prevUser, ...userData };
+    });
+  };
+
   const value = {
     user,
     loading,
@@ -130,6 +139,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signup,
     logout,
     isAuthenticated: !!user,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

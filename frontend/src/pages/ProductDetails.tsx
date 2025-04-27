@@ -14,15 +14,13 @@ import {
   SunIcon,
   CloudIcon,
 } from "@heroicons/react/24/outline";
-import {
-  StarIcon as StarIconSolid,
-  HeartIcon as HeartIconSolid,
-} from "@heroicons/react/24/solid";
+import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ToastContainer, { ToastData } from "../components/ui/ToastContainer";
 import { Tab } from "@headlessui/react";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 import { Product, PotStyle, Review } from "../types/product";
 import productService from "../services/productService";
 import { useAuth } from "../context/AuthContext";
@@ -61,7 +59,7 @@ const ProductDetails = () => {
   const [quantity, setQuantity] = useState(1);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [activeTab, setActiveTab] = useState(0);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [showWriteReview, setShowWriteReview] = useState(false);
   const [reviewFormData, setReviewFormData] = useState({
@@ -181,10 +179,18 @@ const ProductDetails = () => {
   const handleToggleWishlist = async () => {
     if (!product) return;
 
-    try {
-      setIsWishlisted(!isWishlisted);
-    } catch (err) {
-      showToast("error", "Failed to update wishlist");
+    const productInWishlist = isInWishlist(product._id);
+
+    if (!productInWishlist) {
+      addToWishlist({
+        id: product._id,
+        name: product.name,
+        price: product.price,
+        image: product.images[0].url,
+        alt: product.images[0].alt,
+      });
+    } else {
+      removeFromWishlist(product._id);
     }
   };
 
@@ -496,14 +502,18 @@ const ProductDetails = () => {
                 </div>
                 <div className="absolute bottom-4 right-4 flex justify-end">
                   <button
-                    onClick={() => handleToggleWishlist()}
-                    className="p-2 rounded-lg bg-white/90 hover:bg-white text-gray-700 transition-colors"
+                    onClick={handleToggleWishlist}
+                    className={`p-2 rounded-lg transition-colors ${
+                      isInWishlist(product?._id || "")
+                        ? "bg-red-500 text-white hover:bg-red-600"
+                        : "bg-white/90 hover:bg-white text-gray-700"
+                    }`}
                   >
-                    {isWishlisted ? (
-                      <HeartIconSolid className="h-5 w-5 text-red-500" />
-                    ) : (
-                      <HeartIcon className="h-5 w-5" />
-                    )}
+                    <HeartIcon
+                      className={`h-5 w-5 ${
+                        isInWishlist(product?._id || "") ? "fill-current" : ""
+                      }`}
+                    />
                   </button>
                 </div>
               </div>

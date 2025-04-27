@@ -9,7 +9,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
-import ToastContainer, { ToastData } from "../ui/ToastContainer";
 
 interface ProductCardProps {
   product: Product;
@@ -24,21 +23,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
       : "https://via.placeholder.com/300x300?text=No+Image";
 
   const [isHovered, setIsHovered] = useState(false);
-  const [toasts, setToasts] = useState<ToastData[]>([]);
+  const [isCartAnimating, setIsCartAnimating] = useState(false);
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
-
-  const showToast = (type: "success" | "error", message: string) => {
-    const id = Date.now();
-    setToasts((currentToasts) => [...currentToasts, { id, type, message }]);
-  };
-
-  const dismissToast = (id: number) => {
-    setToasts((currentToasts) =>
-      currentToasts.filter((toast) => toast.id !== id)
-    );
-  };
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -49,27 +37,28 @@ const ProductCard = ({ product }: ProductCardProps) => {
       image: typeof productImage === "string" ? productImage : productImage.url,
       alt: name,
     });
-    showToast("success", `${name} has been added to cart!`);
+
+    // Trigger animation
+    setIsCartAnimating(true);
+    setTimeout(() => setIsCartAnimating(false), 500);
   };
 
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
 
-    const productInWishlist = isInWishlist(Number(productId));
+    const productInWishlist = isInWishlist(productId);
 
     if (!productInWishlist) {
       addToWishlist({
-        id: Number(productId),
+        id: productId,
         name,
         price,
         image:
           typeof productImage === "string" ? productImage : productImage.url,
         alt: name,
       });
-      showToast("success", `${name} has been added to wishlist!`);
     } else {
-      removeFromWishlist(Number(productId));
-      showToast("success", `${name} has been removed from wishlist!`);
+      removeFromWishlist(productId);
     }
   };
 
@@ -78,7 +67,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
   return (
     <>
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <div
         className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200"
         onMouseEnter={() => setIsHovered(true)}
@@ -108,13 +96,17 @@ const ProductCard = ({ product }: ProductCardProps) => {
             </button>
             <button
               className={`p-3 rounded-full shadow-md transition duration-200 ${
-                isInWishlist(Number(productId))
-                  ? "bg-red-500 text-white"
+                isInWishlist(productId)
+                  ? "bg-red-500 text-white hover:bg-red-600"
                   : "bg-white hover:bg-red-500 hover:text-white"
               }`}
               onClick={handleWishlistToggle}
             >
-              <HeartIcon className="h-5 w-5" />
+              <HeartIcon
+                className={`h-5 w-5 ${
+                  isInWishlist(productId) ? "fill-current" : ""
+                }`}
+              />
             </button>
           </div>
         </div>
@@ -166,10 +158,14 @@ const ProductCard = ({ product }: ProductCardProps) => {
               )}
             </div>
             <button
-              className="flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors duration-200"
+              className={`flex items-center gap-2 px-5 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-all duration-200 ${
+                isCartAnimating ? "scale-110" : ""
+              }`}
               onClick={handleAddToCart}
             >
-              <ShoppingCartIcon className="h-5 w-5" />
+              <ShoppingCartIcon
+                className={`h-5 w-5 ${isCartAnimating ? "animate-bounce" : ""}`}
+              />
             </button>
           </div>
         </div>
