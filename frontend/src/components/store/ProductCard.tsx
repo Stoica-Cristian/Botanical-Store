@@ -122,19 +122,38 @@ const ProductCard = ({ product }: ProductCardProps) => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">{name}</h3>
           <div className="flex items-center gap-1 mb-3">
             <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <StarIcon
-                  key={i}
-                  className={`w-4 h-4 ${
-                    i < Math.floor(rating || 0)
-                      ? "text-yellow-400"
-                      : "text-gray-300"
-                  }`}
-                />
-              ))}
+              {[...Array(5)].map((_, i) => {
+                const starValue = i + 1;
+                const isHalfStar =
+                  rating && rating % 1 !== 0 && Math.ceil(rating) === starValue;
+                const isFilled = rating && starValue <= Math.floor(rating);
+
+                if (isHalfStar) {
+                  return (
+                    <div key={i} className="relative">
+                      <StarIcon className="w-4 h-4 text-gray-300" />
+                      <div
+                        className="absolute inset-0 overflow-hidden"
+                        style={{ width: "50%" }}
+                      >
+                        <StarIcon className="w-4 h-4 text-yellow-400" />
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <StarIcon
+                    key={i}
+                    className={`w-4 h-4 ${
+                      isFilled ? "text-yellow-400" : "text-gray-300"
+                    }`}
+                  />
+                );
+              })}
             </div>
             <span className="text-sm text-gray-600">
-              ({reviewsCount || 0} reviews)
+              {rating ? rating.toFixed(1) : "0.0"} ({reviewsCount ?? 0} reviews)
             </span>
           </div>
           <div className="flex items-center justify-between gap-5">

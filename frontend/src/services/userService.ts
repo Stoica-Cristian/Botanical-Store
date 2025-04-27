@@ -53,6 +53,16 @@ export const userService = {
     return response;
   },
 
+  deleteCurrentUser: async () => {
+    try {
+      const response = await api.delete("/api/users/profile");
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting current user:", error);
+      throw error;
+    }
+  },
+
   // Admin functions
   getUsers: async (adminId: string) => {
     try {
@@ -102,6 +112,8 @@ export const userService = {
       throw error;
     }
   },
+
+
 
   updateUser: async (user: User, adminId: string = "") => {
     try {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Newsletter from "../components/dashboard/NewsletterSection";
@@ -14,30 +14,33 @@ const Store = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
-  // Function to apply all filters
-  const getFilteredProducts = (products: Product[]) => {
-    return products.filter((product) => {
-      // Price filter
-      const meetsPrice =
-        product.price >= priceRange[0] && product.price <= priceRange[1];
+  // Memoize the filter function to prevent unnecessary re-renders
+  const getFilteredProducts = useCallback(
+    (products: Product[]) => {
+      return products.filter((product) => {
+        // Price filter
+        const meetsPrice =
+          product.price >= priceRange[0] && product.price <= priceRange[1];
 
-      // Category filter
-      const meetsCategory =
-        selectedCategories.length === 0 ||
-        selectedCategories.includes(product.category);
+        // Category filter
+        const meetsCategory =
+          selectedCategories.length === 0 ||
+          selectedCategories.includes(product.category);
 
-      // Search filter
-      const meetsSearch =
-        searchQuery === "" ||
-        product.name.toLowerCase().includes(searchQuery.toLowerCase());
+        // Search filter
+        const meetsSearch =
+          searchQuery === "" ||
+          product.name.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Rating filter
-      const meetsRating =
-        !selectedRating || Math.floor(product.rating) >= selectedRating;
+        // Rating filter
+        const meetsRating =
+          !selectedRating || Math.floor(product.rating) >= selectedRating;
 
-      return meetsPrice && meetsCategory && meetsSearch && meetsRating;
-    });
-  };
+        return meetsPrice && meetsCategory && meetsSearch && meetsRating;
+      });
+    },
+    [priceRange, selectedCategories, searchQuery, selectedRating]
+  );
 
   // Handle filter reset
   const handleClearFilters = () => {

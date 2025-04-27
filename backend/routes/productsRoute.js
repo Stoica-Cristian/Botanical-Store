@@ -9,9 +9,32 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   console.log("🌿 RUTA: /products - Listare produse");
   try {
-    const products = await Product.find({});
-    console.log(`✅ Număr produse returnate: ${products.length}`);
-    res.status(200).json(products);
+    const products = await Product.find({}).populate({
+      path: "reviews",
+      select: "rating",
+    });
+
+    // Calculate rating and review count for each product
+    const productsWithStats = products.map((product) => {
+      const reviews = product.reviews || [];
+      const totalRating = reviews.reduce(
+        (sum, review) => sum + review.rating,
+        0
+      );
+      const averageRating =
+        reviews.length > 0
+          ? Number((totalRating / reviews.length).toFixed(1))
+          : 0;
+
+      return {
+        ...product.toObject(),
+        rating: averageRating,
+        reviewsCount: reviews.length,
+      };
+    });
+
+    console.log(`✅ Număr produse returnate: ${productsWithStats.length}`);
+    res.status(200).json(productsWithStats);
   } catch (error) {
     console.log(`❌ Eroare la listarea produselor: ${error.message}`);
     res.status(500).json({ message: "Server error" });

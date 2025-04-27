@@ -6,6 +6,7 @@ import {
   EyeSlashIcon,
   CheckIcon,
   ExclamationCircleIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
@@ -27,6 +28,7 @@ const Settings = () => {
     savePaymentInfo: true,
     autoLogin: true,
   });
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const showToast = (type: "success" | "error", message: string) => {
     const id = Date.now();
@@ -104,10 +106,65 @@ const Settings = () => {
     }));
   };
 
+  const handleDeleteAccount = async () => {
+    try {
+      await userService.deleteCurrentUser();
+      // Redirect to home page after successful deletion
+      window.location.href = "/";
+    } catch (error) {
+      showToast("error", "Failed to delete account. Please try again later.");
+    }
+  };
+
+  const handleModalClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      setIsDeleteModalOpen(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar />
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Delete Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div
+          className="fixed inset-0 bg-gray-500/50 backdrop-blur-sm flex items-center justify-center z-50"
+          onClick={handleModalClick}
+        >
+          <div
+            className="bg-white rounded-xl p-8 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <ExclamationTriangleIcon className="h-8 w-8 text-error" />
+              <h3 className="text-2xl font-bold">Delete Account</h3>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete your account? This action cannot
+              be undone. All your data, including orders, preferences, and
+              personal information will be permanently deleted.
+            </p>
+
+            <div className="flex gap-4 justify-end">
+              <button
+                className="btn btn-outline"
+                onClick={() => setIsDeleteModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-error text-white"
+                onClick={handleDeleteAccount}
+              >
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 container mx-auto px-4 py-12">
         <div className="max-w-5xl mx-auto">
@@ -416,7 +473,10 @@ const Settings = () => {
 
                 <div className="divider my-6"></div>
 
-                <button className="w-full btn btn-outline btn-error mt-4">
+                <button
+                  className="w-full btn btn-outline btn-error mt-4"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                >
                   Delete Account
                 </button>
               </div>
