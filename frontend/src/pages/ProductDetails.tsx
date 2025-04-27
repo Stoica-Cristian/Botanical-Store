@@ -23,7 +23,7 @@ import Footer from "../components/Footer";
 import ToastContainer, { ToastData } from "../components/ui/ToastContainer";
 import { Tab } from "@headlessui/react";
 import { useCart } from "../context/CartContext";
-import { Product, PotStyle } from "../types/product";
+import { Product, PotStyle, Review } from "../types/product";
 import productService from "../services/productService";
 import { useAuth } from "../context/AuthContext";
 import reviewService from "../services/reviewService";
@@ -72,6 +72,7 @@ const ProductDetails = () => {
   const reviewsPerPage = 5;
   const { addToCart } = useCart();
   const { isAuthenticated, user } = useAuth();
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
 
   useEffect(() => {
     const fetchProductAndReviews = async () => {
@@ -212,8 +213,19 @@ const ProductDetails = () => {
       return;
     }
 
+    // Check if user already has a review
+    const userReview = product.reviews.find(
+      (review) => review.user._id === user.id
+    );
+    if (userReview) {
+      showToast(
+        "error",
+        "You have already reviewed this product. You can only submit one review per product."
+      );
+      return;
+    }
+
     try {
-      // Create the review
       await reviewService.createReview({
         productId: product._id,
         rating: reviewFormData.rating,
@@ -231,7 +243,7 @@ const ProductDetails = () => {
       // Fetch updated reviews
       const updatedReviews = await reviewService.getProductReviews(product._id);
 
-      // Update the product state with both product data and reviews
+      // Update the product state
       setProduct({
         ...updatedProduct,
         reviews: updatedReviews,
@@ -255,8 +267,52 @@ const ProductDetails = () => {
         comment: "",
       });
       setShowWriteReview(false);
-    } catch (error) {
-      showToast("error", "Failed to submit review");
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        showToast("error", error.response.data.message);
+      } else {
+        showToast("error", "Failed to submit review");
+      }
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!product || !user) return;
+
+    try {
+      await reviewService.deleteReview(reviewId, user.id);
+
+      // Fetch updated reviews
+      const updatedReviews = await reviewService.getProductReviews(product._id);
+
+      // Update the product state
+      setProduct((prevProduct) => {
+        if (!prevProduct) return null;
+        return {
+          ...prevProduct,
+          reviews: updatedReviews,
+          reviewsCount: updatedReviews.length,
+          rating:
+            updatedReviews.length > 0
+              ? Number(
+                  (
+                    updatedReviews.reduce(
+                      (acc, review) => acc + review.rating,
+                      0
+                    ) / updatedReviews.length
+                  ).toFixed(1)
+                )
+              : 0,
+        };
+      });
+
+      showToast("success", "Review deleted successfully");
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        showToast("error", error.response.data.message);
+      } else {
+        showToast("error", "Failed to delete review");
+      }
     }
   };
 
@@ -279,6 +335,82 @@ const ProductDetails = () => {
 
   const handleWriteReview = (show: boolean) => {
     setShowWriteReview(show);
+  };
+
+  const handleEditReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (
+      !product ||
+      !user ||
+      !user.id ||
+      !user.firstName ||
+      !user.lastName ||
+      !editingReview
+    ) {
+      showToast("error", "Missing required information");
+      return;
+    }
+
+    try {
+      await reviewService.updateReview({
+        reviewId: editingReview._id!,
+        rating: reviewFormData.rating,
+        comment: reviewFormData.comment,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+      });
+
+      // Fetch updated reviews
+      const updatedReviews = await reviewService.getProductReviews(product._id);
+
+      // Update the product state
+      setProduct((prevProduct) => {
+        if (!prevProduct) return null;
+        return {
+          ...prevProduct,
+          reviews: updatedReviews,
+          reviewsCount: updatedReviews.length,
+          rating:
+            updatedReviews.length > 0
+              ? Number(
+                  (
+                    updatedReviews.reduce(
+                      (acc, review) => acc + review.rating,
+                      0
+                    ) / updatedReviews.length
+                  ).toFixed(1)
+                )
+              : 0,
+        };
+      });
+
+      showToast("success", "Review updated successfully");
+      setReviewFormData({
+        rating: 5,
+        comment: "",
+      });
+      setEditingReview(null);
+      setShowWriteReview(false);
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        showToast("error", error.response.data.message);
+      } else {
+        showToast("error", "Failed to update review");
+      }
+    }
+  };
+
+  const startEditingReview = (review: Review) => {
+    setEditingReview(review);
+    setReviewFormData({
+      rating: review.rating,
+      comment: review.comment,
+    });
+    setShowWriteReview(true);
   };
 
   if (loading) {
@@ -854,6 +986,56 @@ const ProductDetails = () => {
                                       </span>
                                     </div>
                                   </div>
+                                  {isAuthenticated &&
+                                    user &&
+                                    review.user._id === user.id && (
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() =>
+                                            startEditingReview(review)
+                                          }
+                                          className="text-blue-500 hover:text-blue-700 text-sm flex items-center gap-1"
+                                        >
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-4 w-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                            />
+                                          </svg>
+                                          Edit
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleDeleteReview(review._id!)
+                                          }
+                                          className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1"
+                                        >
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-4 w-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                            />
+                                          </svg>
+                                          Delete
+                                        </button>
+                                      </div>
+                                    )}
                                 </div>
                                 <p className="text-sm text-gray-600 mt-2">
                                   {review.comment}
@@ -1100,7 +1282,10 @@ const ProductDetails = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitReview} className="space-y-4">
+            <form
+              onSubmit={editingReview ? handleEditReview : handleSubmitReview}
+              className="space-y-4"
+            >
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Rating
@@ -1145,7 +1330,14 @@ const ProductDetails = () => {
                 <button
                   type="button"
                   className="mr-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                  onClick={() => setShowWriteReview(false)}
+                  onClick={() => {
+                    setShowWriteReview(false);
+                    setEditingReview(null);
+                    setReviewFormData({
+                      rating: 5,
+                      comment: "",
+                    });
+                  }}
                 >
                   Cancel
                 </button>
@@ -1153,7 +1345,7 @@ const ProductDetails = () => {
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-accent rounded-md hover:bg-accent-dark"
                 >
-                  Submit Review
+                  {editingReview ? "Update Review" : "Submit Review"}
                 </button>
               </div>
             </form>

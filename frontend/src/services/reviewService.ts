@@ -12,6 +12,17 @@ interface CreateReviewData {
   };
 }
 
+interface UpdateReviewData {
+  reviewId: string;
+  rating: number;
+  comment: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
 const reviewService = {
   // Create a new review
   createReview: async (data: CreateReviewData): Promise<Review> => {
@@ -44,11 +55,34 @@ const reviewService = {
   },
 
   // Delete a review
-  deleteReview: async (reviewId: string): Promise<void> => {
+  deleteReview: async (reviewId: string, userId: string): Promise<void> => {
     try {
-      await api.delete(`/api/reviews/${reviewId}`);
+      await api.delete(`/api/reviews/${reviewId}`, {
+        data: {
+          user: {
+            _id: userId
+          }
+        }
+      });
     } catch (error) {
       console.error('Error deleting review:', error);
+      throw error;
+    }
+  },
+
+  updateReview: async (data: UpdateReviewData): Promise<Review> => {
+    try {
+      const response = await api.put(`/api/reviews/${data.reviewId}`, {
+        rating: data.rating,
+        comment: data.comment,
+        user: {
+          _id: data.user.id,
+          name: `${data.user.firstName} ${data.user.lastName}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating review:', error);
       throw error;
     }
   },

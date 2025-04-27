@@ -34,24 +34,27 @@ router.post("/", verifyToken, async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Check if user already reviewed this product
+    // Check if user already has a review for this product
     const existingReview = await Review.findOne({
       product: productId,
       user: user._id,
     });
 
     if (existingReview) {
-      console.log(`❌ User ${user._id} already reviewed product ${productId}`);
-      return res
-        .status(400)
-        .json({ message: "You have already reviewed this product" });
+      console.log(
+        `❌ User ${user._id} already has a review for product ${productId}`
+      );
+      return res.status(400).json({
+        message:
+          "You have already reviewed this product. You can only submit one review per product.",
+      });
     }
 
     // Create new review
     const review = await Review.create({
       user: user._id,
-      name: user.name,
       product: productId,
+      name: user.name,
       rating: numericRating,
       comment,
       verified: true,
@@ -143,34 +146,50 @@ router.get("/product/:productId", async (req, res) => {
 
 router.delete("/:id", verifyToken, async (req, res) => {
   try {
-    console.log(`🗑️ Attempting to delete review ${req.params.id}`);
-    const review = await Review.findById(req.params.id);
+    const reviewId = req.params.id;
+    console.log(`🗑️ Attempting to delete review ${reviewId}`);
 
+    // Find the review
+    const review = await Review.findById(reviewId);
     if (!review) {
-      console.log(`❌ Review not found: ${req.params.id}`);
+      console.log(`❌ Review not found: ${reviewId}`);
       return res.status(404).json({ message: "Review not found" });
     }
 
-    if (review.user.toString() !== req.user._id.toString()) {
-      console.log(`❌ Unauthorized deletion attempt by user ${req.user._id}`);
-      return res.status(401).json({ message: "Not authorized" });
+    // Get user from request body (sent from frontend)
+    const { user } = req.body;
+    if (!user || !user._id) {
+      console.log("❌ User information missing in request");
+      return res.status(400).json({ message: "User information is required" });
     }
 
+    // Check if the review belongs to the user
+    if (review.user.toString() !== user._id) {
+      console.log(`❌ Unauthorized deletion attempt by user ${user._id}`);
+      return res
+        .status(401)
+        .json({ message: "Not authorized to delete this review" });
+    }
+
+    // Find and update the product
     const product = await Product.findById(review.product);
     if (product) {
+      // Remove review from product's reviews array
       product.reviews = product.reviews.filter(
         (reviewId) => reviewId.toString() !== review._id.toString()
       );
       product.reviewsCount = product.reviews.length;
 
-      if (product.reviews.length > 0) {
-        const totalRating = product.reviews.reduce((acc, reviewId) => {
-          const review = product.reviews.find(
-            (r) => r._id.toString() === reviewId.toString()
-          );
-          return acc + (review ? review.rating : 0);
-        }, 0);
-        product.rating = totalRating / product.reviewsCount;
+      // Recalculate average rating
+      const remainingReviews = await Review.find({ product: product._id });
+      if (remainingReviews.length > 0) {
+        const totalRating = remainingReviews.reduce(
+          (acc, review) => acc + review.rating,
+          0
+        );
+        product.rating = Number(
+          (totalRating / remainingReviews.length).toFixed(1)
+        );
       } else {
         product.rating = 0;
       }
@@ -179,11 +198,76 @@ router.delete("/:id", verifyToken, async (req, res) => {
       console.log(`✅ Product ${product._id} updated after review deletion`);
     }
 
+    // Delete the review
     await review.deleteOne();
-    console.log(`✅ Review ${req.params.id} deleted successfully`);
+    console.log(`✅ Review ${reviewId} deleted successfully`);
     res.json({ message: "Review removed" });
   } catch (error) {
     console.error("❌ Error deleting review:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/:id", verifyToken, async (req, res) => {
+  try {
+    const reviewId = req.params.id;
+    const { rating, comment, user } = req.body;
+    console.log(`📝 Attempting to update review ${reviewId}`);
+
+    // Validate input
+    if (!rating || !comment || !user || !user._id) {
+      console.log("❌ Missing required fields in review update request");
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Validate rating is a number between 1 and 5
+    const numericRating = Number(rating);
+    if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
+      console.log(`❌ Invalid rating value: ${rating}`);
+      return res
+        .status(400)
+        .json({ message: "Rating must be a number between 1 and 5" });
+    }
+
+    // Find the review
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      console.log(`❌ Review not found: ${reviewId}`);
+      return res.status(404).json({ message: "Review not found" });
+    }
+
+    // Check if the review belongs to the user
+    if (review.user.toString() !== user._id) {
+      console.log(`❌ Unauthorized update attempt by user ${user._id}`);
+      return res
+        .status(401)
+        .json({ message: "Not authorized to update this review" });
+    }
+
+    // Update the review
+    review.rating = numericRating;
+    review.comment = comment;
+    await review.save();
+    console.log(`✅ Review ${reviewId} updated successfully`);
+
+    // Update product rating
+    const product = await Product.findById(review.product);
+    if (product) {
+      const reviews = await Review.find({ product: product._id });
+      if (reviews.length > 0) {
+        const totalRating = reviews.reduce(
+          (acc, review) => acc + review.rating,
+          0
+        );
+        product.rating = Number((totalRating / reviews.length).toFixed(1));
+        console.log(`📊 Updated product rating to ${product.rating}`);
+      }
+      await product.save();
+    }
+
+    res.json(review);
+  } catch (error) {
+    console.error("❌ Error updating review:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
