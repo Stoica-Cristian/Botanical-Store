@@ -1,0 +1,84 @@
+import mongoose from "mongoose";
+
+const orderItemSchema = new mongoose.Schema({
+  product: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product",
+    required: true,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+  },
+  price: {
+    type: Number,
+    required: true,
+  },
+});
+
+const paymentInfoSchema = new mongoose.Schema({
+  method: {
+    type: String,
+    enum: ["credit_card", "paypal", "bank_transfer"],
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: ["pending", "paid", "failed", "refunded"],
+    required: true,
+  },
+  amount: {
+    type: Number,
+    required: true,
+  },
+});
+
+const orderSchema = new mongoose.Schema(
+  {
+    customer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    items: [orderItemSchema],
+    shippingAddress: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Address",
+      required: true,
+    },
+    payment: paymentInfoSchema,
+    status: {
+      type: String,
+      enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
+      default: "pending",
+    },
+    totalAmount: {
+      type: Number,
+      required: true,
+    },
+    shippingCost: {
+      type: Number,
+      required: true,
+    },
+    tax: {
+      type: Number,
+      required: true,
+    },
+    notes: String,
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Add indexes for better query performance
+orderSchema.index({ status: 1 });
+orderSchema.index({ "customer.firstName": 1 });
+orderSchema.index({ "customer.lastName": 1 });
+orderSchema.index({ "customer.email": 1 });
+orderSchema.index({ createdAt: -1 });
+
+const Order = mongoose.model("Order", orderSchema);
+
+export default Order;

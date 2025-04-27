@@ -1,194 +1,88 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   MagnifyingGlassIcon,
   EyeIcon,
-  ArrowDownTrayIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  PlusIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
-import { AdminOrder } from "../../types/admin";
+import { Order, OrderPagination } from "../../types/order";
 import ToastContainer, { ToastData } from "../ui/ToastContainer";
 import Loader from "../ui/Loader";
+import {
+  orderService,
+  FormOrderItem,
+  FormPaymentInfo,
+} from "../../services/orderService";
+import { useAuth } from "../../context/AuthContext";
+import { productService } from "../../services/productService";
 
-const mockOrders: AdminOrder[] = [
-  {
-    id: 1,
-    orderNumber: "ORD-2023-001",
-    customer: {
-      id: 1,
-      name: "John Doe",
-      email: "john@example.com",
-    },
-    products: [
-      {
-        id: 1,
-        name: "Snake Plant",
-        quantity: 2,
-        price: 29.99,
-      },
-    ],
-    totalAmount: 59.98,
-    status: "delivered",
-    paymentStatus: "paid",
-    createdAt: "2023-10-15T08:30:00Z",
-    updatedAt: "2023-10-16T14:20:00Z",
-    shippingAddress: {
-      street: "123 Main St",
-      city: "Anytown",
-      state: "ST",
-      zipCode: "12345",
-      country: "Country",
-    },
-  },
-  {
-    id: 2,
-    orderNumber: "ORD-2023-002",
-    customer: {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane@example.com",
-    },
-    products: [
-      {
-        id: 3,
-        name: "Monstera Deliciosa",
-        quantity: 1,
-        price: 49.99,
-      },
-    ],
-    totalAmount: 49.99,
-    status: "shipped",
-    paymentStatus: "paid",
-    createdAt: "2023-10-16T10:15:00Z",
-    updatedAt: "2023-10-17T09:30:00Z",
-    shippingAddress: {
-      street: "456 Oak Ave",
-      city: "Somewhere",
-      state: "ST",
-      zipCode: "67890",
-      country: "Country",
-    },
-  },
-  {
-    id: 3,
-    orderNumber: "ORD-2023-003",
-    customer: {
-      id: 3,
-      name: "Robert Johnson",
-      email: "robert@example.com",
-    },
-    products: [
-      {
-        id: 2,
-        name: "Fiddle Leaf Fig",
-        quantity: 1,
-        price: 59.99,
-      },
-      {
-        id: 4,
-        name: "Potting Soil Mix",
-        quantity: 1,
-        price: 19.99,
-      },
-    ],
-    totalAmount: 79.98,
-    status: "processing",
-    paymentStatus: "paid",
-    createdAt: "2023-10-17T15:45:00Z",
-    updatedAt: "2023-10-17T16:30:00Z",
-    shippingAddress: {
-      street: "789 Pine Rd",
-      city: "Otherplace",
-      state: "ST",
-      zipCode: "54321",
-      country: "Country",
-    },
-  },
-  {
-    id: 4,
-    orderNumber: "ORD-2023-004",
-    customer: {
-      id: 4,
-      name: "Alice Williams",
-      email: "alice@example.com",
-    },
-    products: [
-      {
-        id: 5,
-        name: "Ceramic Plant Pot - White",
-        quantity: 3,
-        price: 24.99,
-      },
-    ],
-    totalAmount: 74.97,
-    status: "pending",
-    paymentStatus: "unpaid",
-    createdAt: "2023-10-18T09:20:00Z",
-    updatedAt: "2023-10-18T09:20:00Z",
-    shippingAddress: {
-      street: "101 Elm Blvd",
-      city: "Newtown",
-      state: "ST",
-      zipCode: "11223",
-      country: "Country",
-    },
-  },
-  {
-    id: 5,
-    orderNumber: "ORD-2023-005",
-    customer: {
-      id: 5,
-      name: "Michael Brown",
-      email: "michael@example.com",
-    },
-    products: [
-      {
-        id: 1,
-        name: "Snake Plant",
-        quantity: 1,
-        price: 29.99,
-      },
-      {
-        id: 3,
-        name: "Monstera Deliciosa",
-        quantity: 1,
-        price: 49.99,
-      },
-    ],
-    totalAmount: 79.98,
-    status: "cancelled",
-    paymentStatus: "refunded",
-    createdAt: "2023-10-14T11:10:00Z",
-    updatedAt: "2023-10-15T13:25:00Z",
-    shippingAddress: {
-      street: "202 Cedar St",
-      city: "Somecity",
-      state: "ST",
-      zipCode: "33445",
-      country: "Country",
-    },
-  },
-];
+interface FormOrder {
+  customer: string;
+  items: FormOrderItem[];
+  shippingAddress: string;
+  payment: FormPaymentInfo;
+  status: Order["status"];
+  totalAmount: number;
+  shippingCost: number;
+  tax: number;
+}
 
 const OrdersManager = () => {
-  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState<Order["status"] | "All">(
+    "All"
+  );
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
-  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [showStatusUpdateModal, setShowStatusUpdateModal] = useState(false);
-  const [newStatus, setNewStatus] = useState<AdminOrder["status"] | "">("");
+  const [newStatus, setNewStatus] = useState<Order["status"] | "">("");
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  const [pagination, setPagination] = useState<OrderPagination>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  });
+  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
+  const [newOrder, setNewOrder] = useState<FormOrder>({
+    customer: "",
+    items: [
+      {
+        product: "",
+        quantity: 1,
+      },
+    ],
+    shippingAddress: "",
+    payment: {
+      method: "credit_card",
+      status: "pending",
+      amount: 0,
+    },
+    status: "pending",
+    totalAmount: 0,
+    shippingCost: 0,
+    tax: 0,
+  });
+  const orderDetailsModalRef = useRef<HTMLDivElement>(null);
+  const statusUpdateModalRef = useRef<HTMLDivElement>(null);
+  const createOrderModalRef = useRef<HTMLDivElement>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const deleteModalRef = useRef<HTMLDivElement>(null);
 
   // Status options
-  const statusOptions = [
+  const statusOptions: (Order["status"] | "All")[] = [
     "All",
     "pending",
     "processing",
@@ -198,26 +92,97 @@ const OrdersManager = () => {
   ];
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setTimeout(() => {
-          setOrders(mockOrders);
-          setLoading(false);
-        }, 800);
-      } catch (error) {
-        console.error("Error fetching orders data:", error);
-        setLoading(false);
+    fetchOrders();
+  }, [currentPage, itemsPerPage, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        showOrderDetails &&
+        orderDetailsModalRef.current &&
+        !orderDetailsModalRef.current.contains(event.target as Node)
+      ) {
+        setShowOrderDetails(false);
+      }
+
+      if (
+        showStatusUpdateModal &&
+        statusUpdateModalRef.current &&
+        !statusUpdateModalRef.current.contains(event.target as Node)
+      ) {
+        setShowStatusUpdateModal(false);
+      }
+
+      if (
+        showCreateOrderModal &&
+        createOrderModalRef.current &&
+        !createOrderModalRef.current.contains(event.target as Node)
+      ) {
+        setShowCreateOrderModal(false);
+      }
+
+      if (
+        showDeleteModal &&
+        deleteModalRef.current &&
+        !deleteModalRef.current.contains(event.target as Node)
+      ) {
+        setShowDeleteModal(false);
+        setOrderToDelete(null);
       }
     };
 
-    fetchOrders();
-  }, []);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [
+    showOrderDetails,
+    showStatusUpdateModal,
+    showCreateOrderModal,
+    showDeleteModal,
+  ]);
+
+  useEffect(() => {
+    const totalPayment =
+      newOrder.totalAmount + newOrder.shippingCost + newOrder.tax;
+    setNewOrder((prev) => ({
+      ...prev,
+      payment: {
+        ...prev.payment,
+        amount: totalPayment,
+      },
+    }));
+  }, [newOrder.totalAmount, newOrder.shippingCost, newOrder.tax]);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const data = await orderService.getOrders(
+        currentPage,
+        itemsPerPage,
+        user?.id || "",
+        statusFilter === "All" ? undefined : statusFilter,
+        searchTerm
+      );
+      setOrders(data.orders);
+      setPagination(data.pagination);
+    } catch (error) {
+      // addToast("error", "Failed to fetch orders");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter orders based on search term and status
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
-      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.customer.firstName?.toLowerCase() || "").includes(
+        searchTerm.toLowerCase()
+      ) ||
+      (order.customer.lastName?.toLowerCase() || "").includes(
+        searchTerm.toLowerCase()
+      ) ||
       order.customer.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "All" || order.status === statusFilter;
@@ -225,32 +190,9 @@ const OrdersManager = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Sort filtered orders
-  const sortedOrders = [...filteredOrders].sort((a, b) => {
-    let comparison = 0;
-
-    if (sortBy === "date") {
-      comparison =
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    } else if (sortBy === "amount") {
-      comparison = a.totalAmount - b.totalAmount;
-    } else if (sortBy === "orderNumber") {
-      comparison = a.orderNumber.localeCompare(b.orderNumber);
-    }
-
-    return sortOrder === "asc" ? comparison : -comparison;
-  });
-
-  // Pagination
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = sortedOrders.slice(indexOfFirstItem, indexOfLastItem);
-
-  const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
-
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
   };
 
   const handleSortChange = (field: string) => {
@@ -262,7 +204,7 @@ const OrdersManager = () => {
     }
   };
 
-  const handleViewOrder = (order: AdminOrder) => {
+  const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
     setShowOrderDetails(true);
   };
@@ -278,7 +220,7 @@ const OrdersManager = () => {
     setCurrentPage(1);
   };
 
-  const toggleSelectOrder = (orderId: number) => {
+  const toggleSelectOrder = (orderId: string) => {
     setSelectedOrders((prev) => {
       if (prev.includes(orderId)) {
         return prev.filter((id) => id !== orderId);
@@ -289,10 +231,10 @@ const OrdersManager = () => {
   };
 
   const toggleSelectAllOrders = () => {
-    if (selectedOrders.length === currentItems.length) {
+    if (selectedOrders.length === orders.length) {
       setSelectedOrders([]);
     } else {
-      setSelectedOrders(currentItems.map((order) => order.id));
+      setSelectedOrders(orders.map((order) => order._id));
     }
   };
 
@@ -316,45 +258,51 @@ const OrdersManager = () => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  const updateOrderStatus = (
-    orderId: number | null,
-    status: AdminOrder["status"]
+  const updateOrderStatus = async (
+    orderId: string | null,
+    status: Order["status"]
   ) => {
     try {
       if (orderId) {
-        // Update a single order
+        const updatedOrder = await orderService.updateOrderStatus(
+          orderId,
+          {
+            status,
+          },
+          user?.id || ""
+        );
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
-            order.id === orderId ? { ...order, status } : order
+            order._id === orderId ? updatedOrder : order
           )
         );
-        // Update selected order if it's currently being viewed
-        if (selectedOrder && selectedOrder.id === orderId) {
-          setSelectedOrder({ ...selectedOrder, status });
+
+        if (selectedOrder && selectedOrder._id === orderId) {
+          setSelectedOrder(updatedOrder);
         }
 
-        // Show success notification for single order update
-        const updatedOrder = orders.find((order) => order.id === orderId);
-        if (updatedOrder) {
-          addToast(
-            "success",
-            `Order #${updatedOrder.orderNumber} status updated to ${status}`
-          );
-        }
+        addToast(
+          "success",
+          `Order #${updatedOrder._id} status updated to ${status}`
+        );
       } else if (selectedOrders.length > 0) {
-        // Update multiple orders
+        const updatedOrders = await orderService.updateBulkOrderStatus(
+          selectedOrders,
+          { status },
+          user?.id || ""
+        );
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
-            selectedOrders.includes(order.id) ? { ...order, status } : order
+            selectedOrders.includes(order._id)
+              ? updatedOrders.find((u: Order) => u._id === order._id) || order
+              : order
           )
         );
 
-        // Show success notification for bulk update
         addToast(
           "success",
           `${selectedOrders.length} orders updated to status: ${status}`
         );
-
         setSelectedOrders([]);
       }
       setShowStatusUpdateModal(false);
@@ -364,7 +312,7 @@ const OrdersManager = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: Order["status"]) => {
     switch (status) {
       case "delivered":
         return "bg-green-100 text-green-800";
@@ -381,6 +329,55 @@ const OrdersManager = () => {
     }
   };
 
+  const handleCreateOrder = async () => {
+    try {
+      // Fetch product prices first
+      const productsWithPrices = await Promise.all(
+        newOrder.items.map(async (item) => {
+          const product = await productService.getProductById(item.product);
+          return {
+            product: { _id: item.product },
+            quantity: item.quantity,
+            price: product.price,
+          };
+        })
+      );
+
+      const orderData = {
+        ...newOrder,
+        customer: { _id: newOrder.customer },
+        items: productsWithPrices,
+        shippingAddress: { _id: newOrder.shippingAddress },
+      };
+
+      const response = await orderService.createOrder(
+        orderData,
+        user?.id || ""
+      );
+      setOrders((prev) => [response, ...prev]);
+      setShowCreateOrderModal(false);
+      addToast("success", "Order created successfully");
+    } catch (error) {
+      console.error("Error creating order:", error);
+      addToast("error", "Failed to create order");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      await orderService.deleteOrder(orderId, user?.id || "");
+      setOrders((prevOrders) =>
+        prevOrders.filter((order) => order._id !== orderId)
+      );
+      addToast("success", "Order deleted successfully");
+      setShowDeleteModal(false);
+      setOrderToDelete(null);
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      addToast("error", "Failed to delete order");
+    }
+  };
+
   if (loading) {
     return <Loader size="lg" text="Loading orders..." />;
   }
@@ -393,6 +390,13 @@ const OrdersManager = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-medium text-gray-900">Orders</h2>
         <div className="flex space-x-3">
+          <button
+            className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg inline-flex items-center"
+            onClick={() => setShowCreateOrderModal(true)}
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Create Order
+          </button>
           {selectedOrders.length > 0 && (
             <button
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg inline-flex items-center"
@@ -401,10 +405,6 @@ const OrdersManager = () => {
               Update Status ({selectedOrders.length})
             </button>
           )}
-          <button className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg inline-flex items-center">
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export Orders
-          </button>
         </div>
       </div>
 
@@ -429,7 +429,7 @@ const OrdersManager = () => {
             className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:ring-accent focus:border-accent"
             value={statusFilter}
             onChange={(e) => {
-              setStatusFilter(e.target.value);
+              setStatusFilter(e.target.value as Order["status"] | "All");
               setCurrentPage(1);
             }}
           >
@@ -454,8 +454,7 @@ const OrdersManager = () => {
                   type="checkbox"
                   className="rounded border-gray-300 text-accent focus:ring-accent"
                   checked={
-                    selectedOrders.length === currentItems.length &&
-                    currentItems.length > 0
+                    selectedOrders.length === orders.length && orders.length > 0
                   }
                   onChange={toggleSelectAllOrders}
                 />
@@ -511,29 +510,29 @@ const OrdersManager = () => {
                   )}
                 </div>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {currentItems.length > 0 ? (
-              currentItems.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
+            {filteredOrders.length > 0 ? (
+              filteredOrders.map((order) => (
+                <tr key={order._id} className="hover:bg-gray-50">
                   <td className="px-2 py-4 whitespace-nowrap">
                     <input
                       type="checkbox"
                       className="rounded border-gray-300 text-accent focus:ring-accent"
-                      checked={selectedOrders.includes(order.id)}
-                      onChange={() => toggleSelectOrder(order.id)}
+                      checked={selectedOrders.includes(order._id)}
+                      onChange={() => toggleSelectOrder(order._id)}
                     />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {order.orderNumber}
+                    {order._id}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {order.customer.name}
+                      {order.customer.firstName} {order.customer.lastName}
                     </div>
                     <div className="text-sm text-gray-500">
                       {order.customer.email}
@@ -553,20 +552,31 @@ const OrdersManager = () => {
                     </span>
                     <div className="text-xs text-gray-500 mt-1">
                       Payment:{" "}
-                      {order.paymentStatus.charAt(0).toUpperCase() +
-                        order.paymentStatus.slice(1)}
+                      {order.payment.status.charAt(0).toUpperCase() +
+                        order.payment.status.slice(1)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     ${order.totalAmount.toFixed(2)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      className="text-accent hover:text-accent/80"
-                      onClick={() => handleViewOrder(order)}
-                    >
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        className="text-accent hover:text-accent/80"
+                        onClick={() => handleViewOrder(order)}
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        className="text-red-500 hover:text-red-600"
+                        onClick={() => {
+                          setOrderToDelete(order);
+                          setShowDeleteModal(true);
+                        }}
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -584,13 +594,13 @@ const OrdersManager = () => {
         </table>
 
         {/* Pagination */}
-        {sortedOrders.length > 0 && (
+        {pagination.totalPages > 0 && (
           <div className="flex justify-between items-center mt-6">
             <div className="flex items-center">
               <span className="text-sm text-gray-700 mr-3">
-                Showing {indexOfFirstItem + 1} to{" "}
-                {Math.min(indexOfLastItem, sortedOrders.length)} of{" "}
-                {sortedOrders.length} results
+                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
+                of {pagination.total} results
               </span>
               <select
                 className="border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-accent focus:border-accent"
@@ -617,38 +627,43 @@ const OrdersManager = () => {
               >
                 <ChevronLeftIcon className="h-5 w-5" />
               </button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
+              {Array.from(
+                { length: Math.min(5, pagination.totalPages) },
+                (_, i) => {
+                  let pageNum;
+                  if (pagination.totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= pagination.totalPages - 2) {
+                    pageNum = pagination.totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-1 rounded-md ${
+                        currentPage === pageNum
+                          ? "bg-accent text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
                 }
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => handlePageChange(pageNum)}
-                    className={`px-3 py-1 rounded-md ${
-                      currentPage === pageNum
-                        ? "bg-accent text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+              )}
               <button
                 onClick={() =>
-                  handlePageChange(Math.min(totalPages, currentPage + 1))
+                  handlePageChange(
+                    Math.min(pagination.totalPages, currentPage + 1)
+                  )
                 }
-                disabled={currentPage === totalPages}
+                disabled={currentPage === pagination.totalPages}
                 className={`p-2 rounded-md ${
-                  currentPage === totalPages
+                  currentPage === pagination.totalPages
                     ? "text-gray-400 cursor-not-allowed"
                     : "text-gray-700 hover:bg-gray-100"
                 }`}
@@ -663,11 +678,14 @@ const OrdersManager = () => {
       {/* Order Details Modal */}
       {showOrderDetails && selectedOrder && (
         <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div
+            ref={orderDetailsModalRef}
+            className="bg-white p-6 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">
-                  Order Details: {selectedOrder.orderNumber}
+                  Order Details: {selectedOrder._id}
                 </h3>
                 <p className="text-gray-500">
                   Placed on{" "}
@@ -690,12 +708,19 @@ const OrdersManager = () => {
                 </h4>
                 <p>
                   <span className="text-gray-500">Name:</span>{" "}
-                  {selectedOrder.customer.name}
+                  {selectedOrder.customer.firstName}{" "}
+                  {selectedOrder.customer.lastName}
                 </p>
                 <p>
                   <span className="text-gray-500">Email:</span>{" "}
                   {selectedOrder.customer.email}
                 </p>
+                {selectedOrder.customer.phoneNumber && (
+                  <p>
+                    <span className="text-gray-500">Phone:</span>{" "}
+                    {selectedOrder.customer.phoneNumber}
+                  </p>
+                )}
               </div>
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">
@@ -707,7 +732,6 @@ const OrdersManager = () => {
                   {selectedOrder.shippingAddress.state}{" "}
                   {selectedOrder.shippingAddress.zipCode}
                 </p>
-                <p>{selectedOrder.shippingAddress.country}</p>
               </div>
             </div>
 
@@ -725,8 +749,8 @@ const OrdersManager = () => {
                 <span className="text-gray-500">|</span>
                 <span className="text-gray-500">
                   Payment:{" "}
-                  {selectedOrder.paymentStatus.charAt(0).toUpperCase() +
-                    selectedOrder.paymentStatus.slice(1)}
+                  {selectedOrder.payment.status.charAt(0).toUpperCase() +
+                    selectedOrder.payment.status.slice(1)}
                 </span>
               </div>
             </div>
@@ -752,24 +776,62 @@ const OrdersManager = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {selectedOrder.products.map((product) => (
-                      <tr key={product.id}>
+                    {selectedOrder.items.map((item) => (
+                      <tr key={item.product._id}>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                          {product.name}
+                          {item.product.name}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                          {product.quantity}
+                          {item.quantity}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                          ${product.price.toFixed(2)}
+                          ${item.product.price.toFixed(2)}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                          ${(product.price * product.quantity).toFixed(2)}
+                          ${(item.product.price * item.quantity).toFixed(2)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
+                    <tr className="border-t-2 border-gray-200">
+                      <td
+                        colSpan={3}
+                        className="px-4 py-2 text-right font-medium text-gray-900"
+                      >
+                        Subtotal:
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        $
+                        {(
+                          selectedOrder.totalAmount -
+                          selectedOrder.shippingCost -
+                          selectedOrder.tax
+                        ).toFixed(2)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="px-4 py-2 text-right font-medium text-gray-900"
+                      >
+                        Shipping:
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ${selectedOrder.shippingCost.toFixed(2)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="px-4 py-2 text-right font-medium text-gray-900"
+                      >
+                        Tax:
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ${selectedOrder.tax.toFixed(2)}
+                      </td>
+                    </tr>
                     <tr className="border-t-2 border-gray-200">
                       <td
                         colSpan={3}
@@ -811,7 +873,10 @@ const OrdersManager = () => {
       {/* Status Update Modal */}
       {showStatusUpdateModal && (
         <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+          <div
+            ref={statusUpdateModalRef}
+            className="bg-white p-6 rounded-lg w-full max-w-md"
+          >
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               Update Order Status
             </h3>
@@ -820,9 +885,7 @@ const OrdersManager = () => {
                 // Single order update
                 <span>
                   Select new status for order{" "}
-                  <span className="font-medium">
-                    #{selectedOrder.orderNumber}
-                  </span>
+                  <span className="font-medium">#{selectedOrder._id}</span>
                 </span>
               ) : (
                 // Bulk update
@@ -838,7 +901,7 @@ const OrdersManager = () => {
             <select
               value={newStatus}
               onChange={(e) =>
-                setNewStatus(e.target.value as AdminOrder["status"] | "")
+                setNewStatus(e.target.value as Order["status"] | "")
               }
               className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:ring-accent focus:border-accent mb-4"
             >
@@ -867,8 +930,8 @@ const OrdersManager = () => {
                 onClick={() => {
                   if (newStatus) {
                     updateOrderStatus(
-                      selectedOrder ? selectedOrder.id : null,
-                      newStatus as AdminOrder["status"]
+                      selectedOrder ? selectedOrder._id : null,
+                      newStatus
                     );
                     setNewStatus("");
                   }
@@ -876,6 +939,358 @@ const OrdersManager = () => {
                 disabled={!newStatus}
               >
                 Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Order Modal */}
+      {showCreateOrderModal && (
+        <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div
+            ref={createOrderModalRef}
+            className="bg-white p-8 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-semibold text-gray-900">
+                Create New Order
+              </h3>
+              <button
+                onClick={() => setShowCreateOrderModal(false)}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Customer ID
+                  </label>
+                  <input
+                    type="text"
+                    className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                    value={newOrder.customer}
+                    onChange={(e) =>
+                      setNewOrder({ ...newOrder, customer: e.target.value })
+                    }
+                    placeholder="Enter customer ID"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Shipping Address ID
+                  </label>
+                  <input
+                    type="text"
+                    className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                    value={newOrder.shippingAddress}
+                    onChange={(e) =>
+                      setNewOrder({
+                        ...newOrder,
+                        shippingAddress: e.target.value,
+                      })
+                    }
+                    placeholder="Enter shipping address ID"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-b border-gray-200 py-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-lg font-medium">Order Items</h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewOrder({
+                        ...newOrder,
+                        items: [
+                          ...newOrder.items!,
+                          { product: "", quantity: 1 },
+                        ],
+                      });
+                    }}
+                    className="px-3 py-1 bg-accent text-white rounded-md hover:bg-accent/90 transition-colors text-sm"
+                  >
+                    Add Item
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {newOrder.items?.map((item, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg relative group"
+                    >
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Product ID
+                        </label>
+                        <input
+                          type="text"
+                          className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                          value={item.product}
+                          onChange={(e) => {
+                            const newItems = [...newOrder.items!];
+                            newItems[index].product = e.target.value;
+                            setNewOrder({ ...newOrder, items: newItems });
+                          }}
+                          placeholder="Enter product ID"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Quantity
+                        </label>
+                        <input
+                          type="number"
+                          className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const newItems = [...newOrder.items!];
+                            newItems[index].quantity =
+                              parseInt(e.target.value) || 1;
+                            setNewOrder({ ...newOrder, items: newItems });
+                          }}
+                          min="1"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = newOrder.items!.filter(
+                              (_, i) => i !== index
+                            );
+                            setNewOrder({ ...newOrder, items: newItems });
+                          }}
+                          className="w-full px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {newOrder.items?.length === 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      No items added yet. Click "Add Item" to start.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                    value={newOrder.status}
+                    onChange={(e) =>
+                      setNewOrder({
+                        ...newOrder,
+                        status: e.target.value as Order["status"],
+                      })
+                    }
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Method
+                  </label>
+                  <select
+                    className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                    value={newOrder.payment?.method}
+                    onChange={(e) =>
+                      setNewOrder({
+                        ...newOrder,
+                        payment: {
+                          ...newOrder.payment!,
+                          method: e.target.value as FormPaymentInfo["method"],
+                        },
+                      })
+                    }
+                  >
+                    <option value="credit_card">Credit Card</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Status
+                  </label>
+                  <select
+                    className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                    value={newOrder.payment?.status}
+                    onChange={(e) =>
+                      setNewOrder({
+                        ...newOrder,
+                        payment: {
+                          ...newOrder.payment!,
+                          status: e.target.value as FormPaymentInfo["status"],
+                        },
+                      })
+                    }
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="failed">Failed</option>
+                    <option value="refunded">Refunded</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 p-5 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Total Amount
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">$</span>
+                    </div>
+                    <input
+                      type="number"
+                      className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                      value={newOrder.totalAmount || ""}
+                      onChange={(e) =>
+                        setNewOrder({
+                          ...newOrder,
+                          totalAmount: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="0.00"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Shipping Cost
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">$</span>
+                    </div>
+                    <input
+                      type="number"
+                      className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                      value={newOrder.shippingCost || ""}
+                      onChange={(e) =>
+                        setNewOrder({
+                          ...newOrder,
+                          shippingCost: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="0.00"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tax
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">$</span>
+                    </div>
+                    <input
+                      type="number"
+                      className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                      value={newOrder.tax || ""}
+                      onChange={(e) =>
+                        setNewOrder({
+                          ...newOrder,
+                          tax: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="0.00"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-medium">Total Payment:</span>
+                  <span className="text-xl font-semibold">
+                    $
+                    {(
+                      newOrder.totalAmount +
+                      newOrder.shippingCost +
+                      newOrder.tax
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end space-x-4">
+              <button
+                className="px-5 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent transition-colors"
+                onClick={() => setShowCreateOrderModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-5 py-2 border border-transparent rounded-md shadow-sm text-white bg-accent hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent transition-colors"
+                onClick={handleCreateOrder}
+              >
+                Create Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && orderToDelete && (
+        <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div
+            ref={deleteModalRef}
+            className="bg-white p-6 rounded-lg w-full max-w-md"
+          >
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Delete Order
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete order{" "}
+              <span className="font-medium">#{orderToDelete._id}</span>? This
+              action cannot be undone.
+            </p>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setOrderToDelete(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+                onClick={() => handleDeleteOrder(orderToDelete._id)}
+              >
+                Delete
               </button>
             </div>
           </div>
