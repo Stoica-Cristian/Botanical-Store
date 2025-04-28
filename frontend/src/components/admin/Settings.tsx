@@ -1,60 +1,16 @@
 import { useState, useEffect } from "react";
 import { ExclamationCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { AdminSettings } from "../../types/admin";
+import {
+  settingsService,
+  type Settings,
+  type ShippingMethod,
+  type PaymentGateway,
+} from "../../services/settingsService";
 import Loader from "../ui/Loader";
 import ToastContainer, { ToastData } from "../ui/ToastContainer";
-
-// Mock settings data
-const mockSettings: AdminSettings = {
-  storeName: "Botanical Store",
-  currency: "RON",
-  taxRate: 19,
-  shippingMethods: [
-    {
-      id: 1,
-      name: "Standard Shipping",
-      price: 5.99,
-      estimatedDelivery: "3-5 business days",
-    },
-    {
-      id: 2,
-      name: "Express Shipping",
-      price: 12.99,
-      estimatedDelivery: "1-2 business days",
-    },
-    {
-      id: 3,
-      name: "Free Shipping",
-      price: 0,
-      estimatedDelivery: "5-7 business days",
-    },
-  ],
-  paymentGateways: [
-    {
-      id: 1,
-      name: "Credit Card",
-      enabled: true,
-    },
-    {
-      id: 2,
-      name: "PayPal",
-      enabled: true,
-    },
-    {
-      id: 3,
-      name: "Apple Pay",
-      enabled: false,
-    },
-    {
-      id: 4,
-      name: "Google Pay",
-      enabled: false,
-    },
-  ],
-};
+import { useAuth } from "../../context/AuthContext";
 
 const Settings = () => {
-  const [settings, setSettings] = useState<AdminSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -62,6 +18,7 @@ const Settings = () => {
     "general" | "shipping" | "payment"
   >("general");
   const [toasts, setToasts] = useState<ToastData[]>([]);
+  const { user } = useAuth();
 
   // Editing states
   const [generalSettings, setGeneralSettings] = useState({
@@ -70,31 +27,25 @@ const Settings = () => {
     taxRate: 0,
   });
 
-  const [shippingMethods, setShippingMethods] = useState<
-    AdminSettings["shippingMethods"]
-  >([]);
-  const [paymentGateways, setPaymentGateways] = useState<
-    AdminSettings["paymentGateways"]
-  >([]);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [paymentGateways, setPaymentGateways] = useState<PaymentGateway[]>([]);
   const [showShippingModal, setShowShippingModal] = useState(false);
-  const [currentShippingMethod, setCurrentShippingMethod] = useState<
-    AdminSettings["shippingMethods"][0] | null
-  >(null);
+  const [currentShippingMethod, setCurrentShippingMethod] =
+    useState<ShippingMethod | null>(null);
 
   // Add confirmation dialog state for shipping methods
   const [showDeleteShippingConfirmation, setShowDeleteShippingConfirmation] =
     useState(false);
   const [shippingMethodToDelete, setShippingMethodToDelete] = useState<
-    number | null
+    string | null
   >(null);
 
   // Payment gateway modal states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [currentPaymentGateway, setCurrentPaymentGateway] = useState<
-    AdminSettings["paymentGateways"][0] | null
-  >(null);
+  const [currentPaymentGateway, setCurrentPaymentGateway] =
+    useState<PaymentGateway | null>(null);
   const [paymentGatewayToDelete, setPaymentGatewayToDelete] = useState<
-    number | null
+    string | null
   >(null);
   const [showDeletePaymentConfirmation, setShowDeletePaymentConfirmation] =
     useState(false);
@@ -105,17 +56,15 @@ const Settings = () => {
         setLoading(true);
         setError(null);
 
-        setTimeout(() => {
-          setSettings(mockSettings);
-          setGeneralSettings({
-            storeName: mockSettings.storeName,
-            currency: mockSettings.currency,
-            taxRate: mockSettings.taxRate,
-          });
-          setShippingMethods(mockSettings.shippingMethods);
-          setPaymentGateways(mockSettings.paymentGateways);
-          setLoading(false);
-        }, 800);
+        const data = await settingsService.getSettings(user?.id || "");
+        setGeneralSettings({
+          storeName: data.storeName,
+          currency: data.currency,
+          taxRate: data.taxRate,
+        });
+        setShippingMethods(data.shippingMethods);
+        setPaymentGateways(data.paymentGateways);
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching settings:", error);
         setError("Failed to load settings. Please try again later.");
@@ -143,19 +92,8 @@ const Settings = () => {
     e.preventDefault();
     try {
       setSaving(true);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      // Update settings
-      if (settings) {
-        const updatedSettings = {
-          ...settings,
-          ...generalSettings,
-        };
-        setSettings(updatedSettings);
-        addToast("success", "General settings updated successfully");
-      }
+      await settingsService.updateSettings(generalSettings, user?.id || "");
+      addToast("success", "General settings updated successfully");
     } catch (error) {
       console.error("Error updating settings:", error);
       addToast("error", "Failed to update settings. Please try again.");
@@ -164,35 +102,29 @@ const Settings = () => {
     }
   };
 
-  const handlePaymentGatewayToggle = async (id: number) => {
+  const handlePaymentGatewayToggle = async (id: string) => {
     try {
-      // Find the gateway to toggle
-      const updatedGateways = paymentGateways.map((gateway) =>
-        gateway.id === id ? { ...gateway, enabled: !gateway.enabled } : gateway
+      const gateway = paymentGateways.find((g) => g._id === id);
+      if (!gateway) return;
+
+      const updatedGateway = await settingsService.updatePaymentGateway(
+        id,
+        {
+          enabled: !gateway.enabled,
+        },
+        user?.id || ""
       );
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      setPaymentGateways((prev) =>
+        prev.map((g) => (g._id === id ? updatedGateway : g))
+      );
 
-      setPaymentGateways(updatedGateways);
-
-      if (settings) {
-        const updatedSettings = {
-          ...settings,
-          paymentGateways: updatedGateways,
-        };
-        setSettings(updatedSettings);
-      }
-
-      const gateway = paymentGateways.find((g) => g.id === id);
-      if (gateway) {
-        addToast(
-          "success",
-          `${gateway.name} ${
-            gateway.enabled ? "disabled" : "enabled"
-          } successfully`
-        );
-      }
+      addToast(
+        "success",
+        `${gateway.name} ${
+          gateway.enabled ? "disabled" : "enabled"
+        } successfully`
+      );
     } catch (error) {
       console.error("Error toggling payment gateway:", error);
       addToast("error", "Failed to update payment gateway. Please try again.");
@@ -204,14 +136,12 @@ const Settings = () => {
     setShowShippingModal(true);
   };
 
-  const handleEditShippingMethod = (
-    method: AdminSettings["shippingMethods"][0]
-  ) => {
+  const handleEditShippingMethod = (method: ShippingMethod) => {
     setCurrentShippingMethod(method);
     setShowShippingModal(true);
   };
 
-  const handleDeleteShippingMethod = (id: number) => {
+  const handleDeleteShippingMethod = (id: string) => {
     setShippingMethodToDelete(id);
     setShowDeleteShippingConfirmation(true);
   };
@@ -220,30 +150,14 @@ const Settings = () => {
     if (!shippingMethodToDelete) return;
 
     try {
-      const methodToDelete = shippingMethods.find(
-        (m) => m.id === shippingMethodToDelete
+      await settingsService.deleteShippingMethod(
+        shippingMethodToDelete,
+        user?.id || ""
       );
-      const updatedMethods = shippingMethods.filter(
-        (method) => method.id !== shippingMethodToDelete
+      setShippingMethods((prev) =>
+        prev.filter((method) => method._id !== shippingMethodToDelete)
       );
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      setShippingMethods(updatedMethods);
-
-      if (settings) {
-        const updatedSettings = {
-          ...settings,
-          shippingMethods: updatedMethods,
-        };
-        setSettings(updatedSettings);
-      }
-
-      addToast(
-        "success",
-        `Shipping method ${methodToDelete?.name} deleted successfully`
-      );
+      addToast("success", "Shipping method deleted successfully");
       setShowDeleteShippingConfirmation(false);
       setShippingMethodToDelete(null);
     } catch (error) {
@@ -253,42 +167,35 @@ const Settings = () => {
   };
 
   const handleSaveShippingMethod = async (
-    method: AdminSettings["shippingMethods"][0]
+    method: Omit<ShippingMethod, "_id" | "createdAt" | "updatedAt">
   ) => {
     try {
-      let updatedMethods;
-
-      if (method.id) {
-        // Edit existing method
-        updatedMethods = shippingMethods.map((m) =>
-          m.id === method.id ? method : m
+      let updatedMethod: ShippingMethod;
+      if (currentShippingMethod?._id) {
+        updatedMethod = await settingsService.updateShippingMethod(
+          currentShippingMethod._id,
+          method,
+          user?.id || ""
+        );
+        setShippingMethods((prev) =>
+          prev.map((m) =>
+            m._id === currentShippingMethod._id ? updatedMethod : m
+          )
         );
       } else {
-        // Add new method
-        const newMethod = {
-          ...method,
-          id: Math.max(0, ...shippingMethods.map((m) => m.id)) + 1,
-        };
-        updatedMethods = [...shippingMethods, newMethod];
-      }
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      setShippingMethods(updatedMethods);
-
-      if (settings) {
-        const updatedSettings = {
-          ...settings,
-          shippingMethods: updatedMethods,
-        };
-        setSettings(updatedSettings);
+        updatedMethod = await settingsService.createShippingMethod(
+          method,
+          user?.id || ""
+        );
+        setShippingMethods((prev) => [...prev, updatedMethod]);
       }
 
       setShowShippingModal(false);
       addToast(
         "success",
-        `Shipping method ${method.id ? "updated" : "added"} successfully`
+        `Shipping method ${
+          currentShippingMethod ? "updated" : "added"
+        } successfully`
       );
     } catch (error) {
       console.error("Error saving shipping method:", error);
@@ -301,14 +208,12 @@ const Settings = () => {
     setShowPaymentModal(true);
   };
 
-  const handleEditPaymentGateway = (
-    gateway: AdminSettings["paymentGateways"][0]
-  ) => {
+  const handleEditPaymentGateway = (gateway: PaymentGateway) => {
     setCurrentPaymentGateway(gateway);
     setShowPaymentModal(true);
   };
 
-  const handleDeletePaymentGateway = (id: number) => {
+  const handleDeletePaymentGateway = (id: string) => {
     setPaymentGatewayToDelete(id);
     setShowDeletePaymentConfirmation(true);
   };
@@ -317,30 +222,14 @@ const Settings = () => {
     if (!paymentGatewayToDelete) return;
 
     try {
-      const gatewayToDelete = paymentGateways.find(
-        (g) => g.id === paymentGatewayToDelete
+      await settingsService.deletePaymentGateway(
+        paymentGatewayToDelete,
+        user?.id || ""
       );
-      const updatedGateways = paymentGateways.filter(
-        (gateway) => gateway.id !== paymentGatewayToDelete
+      setPaymentGateways((prev) =>
+        prev.filter((gateway) => gateway._id !== paymentGatewayToDelete)
       );
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      setPaymentGateways(updatedGateways);
-
-      if (settings) {
-        const updatedSettings = {
-          ...settings,
-          paymentGateways: updatedGateways,
-        };
-        setSettings(updatedSettings);
-      }
-
-      addToast(
-        "success",
-        `Payment gateway ${gatewayToDelete?.name} deleted successfully`
-      );
+      addToast("success", "Payment gateway deleted successfully");
       setShowDeletePaymentConfirmation(false);
       setPaymentGatewayToDelete(null);
     } catch (error) {
@@ -350,42 +239,35 @@ const Settings = () => {
   };
 
   const handleSavePaymentGateway = async (
-    gateway: AdminSettings["paymentGateways"][0]
+    gateway: Omit<PaymentGateway, "_id" | "createdAt" | "updatedAt">
   ) => {
     try {
-      let updatedGateways;
-
-      if (gateway.id) {
-        // Edit existing gateway
-        updatedGateways = paymentGateways.map((g) =>
-          g.id === gateway.id ? gateway : g
+      let updatedGateway: PaymentGateway;
+      if (currentPaymentGateway?._id) {
+        updatedGateway = await settingsService.updatePaymentGateway(
+          currentPaymentGateway._id,
+          gateway,
+          user?.id || ""
+        );
+        setPaymentGateways((prev) =>
+          prev.map((g) =>
+            g._id === currentPaymentGateway._id ? updatedGateway : g
+          )
         );
       } else {
-        // Add new gateway
-        const newGateway = {
-          ...gateway,
-          id: Math.max(0, ...paymentGateways.map((g) => g.id)) + 1,
-        };
-        updatedGateways = [...paymentGateways, newGateway];
-      }
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      setPaymentGateways(updatedGateways);
-
-      if (settings) {
-        const updatedSettings = {
-          ...settings,
-          paymentGateways: updatedGateways,
-        };
-        setSettings(updatedSettings);
+        updatedGateway = await settingsService.createPaymentGateway(
+          gateway,
+          user?.id || ""
+        );
+        setPaymentGateways((prev) => [...prev, updatedGateway]);
       }
 
       setShowPaymentModal(false);
       addToast(
         "success",
-        `Payment gateway ${gateway.id ? "updated" : "added"} successfully`
+        `Payment gateway ${
+          currentPaymentGateway ? "updated" : "added"
+        } successfully`
       );
     } catch (error) {
       console.error("Error saving payment gateway:", error);
@@ -599,7 +481,7 @@ const Settings = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {shippingMethods.length > 0 ? (
                       shippingMethods.map((method) => (
-                        <tr key={method.id} className="hover:bg-gray-50">
+                        <tr key={method._id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {method.name}
                           </td>
@@ -620,7 +502,7 @@ const Settings = () => {
                             </button>
                             <button
                               onClick={() =>
-                                handleDeleteShippingMethod(method.id)
+                                handleDeleteShippingMethod(method._id)
                               }
                               className="text-red-600 hover:text-red-800"
                             >
@@ -664,7 +546,7 @@ const Settings = () => {
                 {paymentGateways.length > 0 ? (
                   paymentGateways.map((gateway) => (
                     <div
-                      key={gateway.id}
+                      key={gateway._id}
                       className={`rounded-lg p-4 flex justify-between items-center transition-colors ${
                         gateway.enabled
                           ? "bg-green-50 border border-green-100"
@@ -696,7 +578,7 @@ const Settings = () => {
                               className="sr-only peer"
                               checked={gateway.enabled}
                               onChange={() =>
-                                handlePaymentGatewayToggle(gateway.id)
+                                handlePaymentGatewayToggle(gateway._id)
                               }
                             />
                             <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
@@ -711,7 +593,7 @@ const Settings = () => {
                           </button>
                           <button
                             onClick={() =>
-                              handleDeletePaymentGateway(gateway.id)
+                              handleDeletePaymentGateway(gateway._id)
                             }
                             className="text-red-600 hover:text-red-800"
                           >
@@ -860,8 +742,10 @@ const Settings = () => {
 };
 
 interface ShippingMethodFormProps {
-  method: AdminSettings["shippingMethods"][0] | null;
-  onSave: (method: AdminSettings["shippingMethods"][0]) => void;
+  method: ShippingMethod | null;
+  onSave: (
+    method: Omit<ShippingMethod, "_id" | "createdAt" | "updatedAt">
+  ) => void;
   onCancel: () => void;
 }
 
@@ -871,10 +755,10 @@ const ShippingMethodForm: React.FC<ShippingMethodFormProps> = ({
   onCancel,
 }) => {
   const [formData, setFormData] = useState({
-    id: method?.id || 0,
     name: method?.name || "",
     price: method?.price || 0,
     estimatedDelivery: method?.estimatedDelivery || "",
+    isDefault: method?.isDefault || false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -958,8 +842,10 @@ const ShippingMethodForm: React.FC<ShippingMethodFormProps> = ({
 };
 
 interface PaymentGatewayFormProps {
-  gateway: AdminSettings["paymentGateways"][0] | null;
-  onSave: (gateway: AdminSettings["paymentGateways"][0]) => void;
+  gateway: PaymentGateway | null;
+  onSave: (
+    gateway: Omit<PaymentGateway, "_id" | "createdAt" | "updatedAt">
+  ) => void;
   onCancel: () => void;
 }
 
@@ -969,9 +855,10 @@ const PaymentGatewayForm: React.FC<PaymentGatewayFormProps> = ({
   onCancel,
 }) => {
   const [formData, setFormData] = useState({
-    id: gateway?.id || 0,
     name: gateway?.name || "",
     enabled: gateway?.enabled || false,
+    credentials: gateway?.credentials || {},
+    isDefault: gateway?.isDefault || false,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

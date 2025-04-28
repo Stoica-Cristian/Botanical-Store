@@ -9,6 +9,7 @@ import wishlistRoutes from "./routes/wishlistRoutes.js";
 import addressRoutes from "./routes/addressRoutes.js";
 import paymentMethodRoutes from "./routes/paymentMethodRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 
 import cors from "cors";
 import dotenv from "dotenv";
@@ -38,6 +39,7 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/payment-methods", paymentMethodRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/settings", settingsRoutes);
 
 app.use((req, res) => {
   console.log(`⚠️ Rută inexistentă: ${req.method} ${req.originalUrl}`);

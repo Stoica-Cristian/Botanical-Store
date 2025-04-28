@@ -702,44 +702,71 @@ const OrdersManager = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-3">
                   Customer Information
                 </h4>
-                <p>
-                  <span className="text-gray-500">Name:</span>{" "}
-                  {selectedOrder.customer.firstName}{" "}
-                  {selectedOrder.customer.lastName}
-                </p>
-                <p>
-                  <span className="text-gray-500">Email:</span>{" "}
-                  {selectedOrder.customer.email}
-                </p>
-                {selectedOrder.customer.phoneNumber && (
+                <div className="space-y-2">
                   <p>
-                    <span className="text-gray-500">Phone:</span>{" "}
-                    {selectedOrder.customer.phoneNumber}
+                    <span className="text-gray-500">Name:</span>{" "}
+                    <span className="font-medium">
+                      {selectedOrder.customer.firstName}{" "}
+                      {selectedOrder.customer.lastName}
+                    </span>
                   </p>
-                )}
+                  <p>
+                    <span className="text-gray-500">Email:</span>{" "}
+                    <span className="font-medium">
+                      {selectedOrder.customer.email}
+                    </span>
+                  </p>
+                  {selectedOrder.customer.phoneNumber && (
+                    <p>
+                      <span className="text-gray-500">Phone:</span>{" "}
+                      <span className="font-medium">
+                        {selectedOrder.customer.phoneNumber}
+                      </span>
+                    </p>
+                  )}
+                </div>
               </div>
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-3">
                   Shipping Information
                 </h4>
-                <p>{selectedOrder.shippingAddress.street}</p>
-                <p>
-                  {selectedOrder.shippingAddress.city},{" "}
-                  {selectedOrder.shippingAddress.state}{" "}
-                  {selectedOrder.shippingAddress.zipCode}
-                </p>
+                <div className="space-y-2">
+                  {selectedOrder.shippingAddress && (
+                    <>
+                      <p className="font-medium">
+                        {selectedOrder.shippingAddress.street ||
+                          "No street address provided"}
+                      </p>
+                      <p>
+                        {selectedOrder.shippingAddress.city ||
+                          "No city provided"}
+                        ,{" "}
+                        {selectedOrder.shippingAddress.state ||
+                          "No state provided"}{" "}
+                        {selectedOrder.shippingAddress.zipCode ||
+                          "No zip code provided"}
+                      </p>
+                    </>
+                  )}
+                  {!selectedOrder.shippingAddress && (
+                    <p className="text-gray-500">
+                      No shipping address provided
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="mb-6">
-              <h4 className="font-medium text-gray-900 mb-2">Order Status</h4>
-              <div className="flex items-center space-x-2">
+            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <h4 className="font-medium text-gray-900 mb-3">Order Status</h4>
+              <div className="flex items-center space-x-4">
                 <span
-                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
+                  className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusColor(
                     selectedOrder.status
                   )}`}
                 >
@@ -747,124 +774,95 @@ const OrdersManager = () => {
                     selectedOrder.status.slice(1)}
                 </span>
                 <span className="text-gray-500">|</span>
-                <span className="text-gray-500">
+                <span className="text-gray-600">
                   Payment:{" "}
-                  {selectedOrder.payment.status.charAt(0).toUpperCase() +
-                    selectedOrder.payment.status.slice(1)}
+                  <span className="font-medium">
+                    {selectedOrder.payment.status.charAt(0).toUpperCase() +
+                      selectedOrder.payment.status.slice(1)}
+                  </span>
                 </span>
               </div>
             </div>
 
             <div className="mb-6">
-              <h4 className="font-medium text-gray-900 mb-2">Order Items</h4>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Product
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Quantity
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Price
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {selectedOrder.items.map((item) => (
-                      <tr key={item.product._id}>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                          {item.product.name}
-                        </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                          {item.quantity}
-                        </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                          ${item.product.price.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                          ${(item.product.price * item.quantity).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t-2 border-gray-200">
-                      <td
-                        colSpan={3}
-                        className="px-4 py-2 text-right font-medium text-gray-900"
-                      >
-                        Subtotal:
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                        $
-                        {(
-                          selectedOrder.totalAmount -
-                          selectedOrder.shippingCost -
-                          selectedOrder.tax
-                        ).toFixed(2)}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className="px-4 py-2 text-right font-medium text-gray-900"
-                      >
-                        Shipping:
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${selectedOrder.shippingCost.toFixed(2)}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className="px-4 py-2 text-right font-medium text-gray-900"
-                      >
-                        Tax:
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${selectedOrder.tax.toFixed(2)}
-                      </td>
-                    </tr>
-                    <tr className="border-t-2 border-gray-200">
-                      <td
-                        colSpan={3}
-                        className="px-4 py-2 text-right font-medium text-gray-900"
-                      >
-                        Total Amount:
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${selectedOrder.totalAmount.toFixed(2)}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+              <h4 className="font-medium text-gray-900 mb-3">Order Items</h4>
+              <div className="space-y-4">
+                {selectedOrder.items.map((item) => (
+                  <div
+                    key={item.product._id}
+                    className="flex items-center space-x-4 p-4 bg-white border border-gray-200 rounded-lg"
+                  >
+                    <div className="w-20 h-20 flex-shrink-0">
+                      {item.product.images &&
+                        item.product.images.length > 0 && (
+                          <img
+                            src={
+                              typeof item.product.images[0] === "string"
+                                ? item.product.images[0]
+                                : item.product.images[0].url
+                            }
+                            alt={item.product.name}
+                            className="w-full h-full object-cover rounded-md"
+                          />
+                        )}
+                    </div>
+                    <div className="flex-1">
+                      <h5 className="font-medium text-gray-900">
+                        {item.product.name}
+                      </h5>
+                      <p className="text-sm text-gray-500">
+                        Quantity: {item.quantity}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-gray-900">
+                        ${item.product.price.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Total: $
+                        {(item.product.price * item.quantity).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3">
-              <button
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg"
-                onClick={() => setShowOrderDetails(false)}
-              >
-                Close
-              </button>
-              <button
-                className="bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-lg"
-                onClick={() => {
-                  setSelectedOrder(selectedOrder);
-                  setShowStatusUpdateModal(true);
-                  setShowOrderDetails(false);
-                }}
-              >
-                Update Status
-              </button>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-3">Order Summary</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="font-medium">
+                    $
+                    {(
+                      selectedOrder.totalAmount -
+                      selectedOrder.shippingCost -
+                      selectedOrder.tax
+                    ).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Shipping:</span>
+                  <span className="font-medium">
+                    ${selectedOrder.shippingCost.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tax:</span>
+                  <span className="font-medium">
+                    ${selectedOrder.tax.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-gray-200">
+                  <span className="font-medium text-gray-900">
+                    Total Amount:
+                  </span>
+                  <span className="font-medium text-gray-900">
+                    ${selectedOrder.totalAmount.toFixed(2)}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
