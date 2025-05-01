@@ -7,6 +7,7 @@ import {
   ChevronRightIcon,
   PlusIcon,
   TrashIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 import { Order, OrderPagination } from "../../types/order";
 import ToastContainer, { ToastData } from "../ui/ToastContainer";
@@ -18,6 +19,9 @@ import {
 } from "../../services/orderService";
 import { useAuth } from "../../context/AuthContext";
 import { productService } from "../../services/productService";
+import { addressService } from "../../services/addressService";
+import { settingsService } from "../../services/settingsService";
+import { Product } from "../../types/product";
 
 interface FormOrder {
   customer: string;
@@ -80,6 +84,24 @@ const OrdersManager = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const deleteModalRef = useRef<HTMLDivElement>(null);
+  const [taxRate, setTaxRate] = useState(0);
+  const [showEditOrderModal, setShowEditOrderModal] = useState(false);
+  const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
+  const editOrderModalRef = useRef<HTMLDivElement>(null);
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<string>("");
+  const [newProductQuantity, setNewProductQuantity] = useState<number>(1);
+
+  // Add new state for address creation
+  const [isCreatingNewAddress, setIsCreatingNewAddress] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    name: "",
+    street: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    isDefault: false,
+  });
 
   // Status options
   const statusOptions: (Order["status"] | "All")[] = [
@@ -154,6 +176,34 @@ const OrdersManager = () => {
     }));
   }, [newOrder.totalAmount, newOrder.shippingCost, newOrder.tax]);
 
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await settingsService.getSettings(user?.id || "");
+        setTaxRate(settings.taxRate);
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+        addToast("error", "Failed to fetch tax rate from settings");
+      }
+    };
+
+    fetchSettings();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const products = await productService.getAllProducts();
+        setAvailableProducts(products);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        addToast("error", "Failed to fetch products");
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -167,7 +217,7 @@ const OrdersManager = () => {
       setOrders(data.orders);
       setPagination(data.pagination);
     } catch (error) {
-      // addToast("error", "Failed to fetch orders");
+      addToast("error", "Failed to fetch orders");
     } finally {
       setLoading(false);
     }
@@ -343,11 +393,37 @@ const OrdersManager = () => {
         })
       );
 
+      let shippingAddressId = newOrder.shippingAddress;
+
+      // If creating a new address
+      if (isCreatingNewAddress) {
+        // Create the new address
+        const newAddressResponse = await addressService.create({
+          name: `${newAddress.street}, ${newAddress.city}`, // Create a name from street and city
+          street: newAddress.street,
+          city: newAddress.city,
+          state: newAddress.state,
+          zipCode: newAddress.zipCode,
+          isDefault: newAddress.isDefault,
+        });
+
+        // Use the newly created address ID
+        shippingAddressId = newAddressResponse._id;
+      }
+
+      // Calculate tax based on settings
+      const subtotal = productsWithPrices.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      const calculatedTax = subtotal * (taxRate / 100);
+
       const orderData = {
         ...newOrder,
         customer: { _id: newOrder.customer },
         items: productsWithPrices,
-        shippingAddress: { _id: newOrder.shippingAddress },
+        shippingAddress: { _id: shippingAddressId },
+        tax: calculatedTax,
       };
 
       const response = await orderService.createOrder(
@@ -357,6 +433,36 @@ const OrdersManager = () => {
       setOrders((prev) => [response, ...prev]);
       setShowCreateOrderModal(false);
       addToast("success", "Order created successfully");
+
+      // Reset the form
+      setNewOrder({
+        customer: "",
+        items: [
+          {
+            product: "",
+            quantity: 1,
+          },
+        ],
+        shippingAddress: "",
+        payment: {
+          method: "credit_card",
+          status: "pending",
+          amount: 0,
+        },
+        status: "pending",
+        totalAmount: 0,
+        shippingCost: 0,
+        tax: 0,
+      });
+      setNewAddress({
+        name: "",
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        isDefault: false,
+      });
+      setIsCreatingNewAddress(false);
     } catch (error) {
       console.error("Error creating order:", error);
       addToast("error", "Failed to create order");
@@ -376,6 +482,107 @@ const OrdersManager = () => {
       console.error("Error deleting order:", error);
       addToast("error", "Failed to delete order");
     }
+  };
+
+  const handleEditClick = (order: Order) => {
+    console.log("Order being edited:", order); // Debug log
+    console.log("Customer ID:", order.customer.id); // Debug log
+    console.log("Address ID:", order.shippingAddress._id); // Debug log
+
+    setOrderToEdit({
+      ...order,
+      customer: {
+        ...order.customer,
+        id: order.customer.id,
+      },
+      shippingAddress: {
+        ...order.shippingAddress,
+        _id: order.shippingAddress._id,
+      },
+    });
+    setShowEditOrderModal(true);
+  };
+
+  const handleEditOrder = async () => {
+    try {
+      if (!orderToEdit) return;
+
+      // Fetch product prices first
+      const productsWithPrices = await Promise.all(
+        orderToEdit.items.map(async (item) => {
+          const product = await productService.getProductById(item.product._id);
+          return {
+            product: product,
+            quantity: item.quantity,
+            price: product.price,
+          };
+        })
+      );
+
+      // Calculate tax based on settings
+      const subtotal = productsWithPrices.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+      const calculatedTax = subtotal * (taxRate / 100);
+
+      const orderData = {
+        ...orderToEdit,
+        items: productsWithPrices,
+        tax: calculatedTax,
+        totalAmount: subtotal + orderToEdit.shippingCost + calculatedTax,
+      };
+
+      const response = await orderService.updateOrder(
+        orderToEdit._id,
+        orderData,
+        user?.id || ""
+      );
+
+      setOrders((prev) =>
+        prev.map((order) => (order._id === response._id ? response : order))
+      );
+      setShowEditOrderModal(false);
+      addToast("success", "Order updated successfully");
+    } catch (error) {
+      console.error("Error updating order:", error);
+      addToast("error", "Failed to update order");
+    }
+  };
+
+  const handleAddProduct = () => {
+    if (!selectedProduct || !newProductQuantity) return;
+
+    const product = availableProducts.find((p) => p._id === selectedProduct);
+    if (!product) return;
+
+    setOrderToEdit((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: [
+          ...prev.items,
+          {
+            product,
+            quantity: newProductQuantity,
+            price: product.price,
+          },
+        ],
+      };
+    });
+
+    setSelectedProduct("");
+    setNewProductQuantity(1);
+  };
+
+  const handleRemoveProduct = (index: number) => {
+    setOrderToEdit((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.filter((_, i) => i !== index),
+      };
+    });
   };
 
   if (loading) {
@@ -566,6 +773,12 @@ const OrdersManager = () => {
                         onClick={() => handleViewOrder(order)}
                       >
                         <EyeIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        className="text-blue-600 hover:text-blue-800"
+                        onClick={() => handleEditClick(order)}
+                      >
+                        <PencilIcon className="h-5 w-5" />
                       </button>
                       <button
                         className="text-red-500 hover:text-red-600"
@@ -980,21 +1193,130 @@ const OrdersManager = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Shipping Address ID
-                  </label>
-                  <input
-                    type="text"
-                    className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
-                    value={newOrder.shippingAddress}
-                    onChange={(e) =>
-                      setNewOrder({
-                        ...newOrder,
-                        shippingAddress: e.target.value,
-                      })
-                    }
-                    placeholder="Enter shipping address ID"
-                  />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Shipping Address
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setIsCreatingNewAddress(!isCreatingNewAddress)
+                      }
+                      className="text-sm text-accent hover:text-accent/80"
+                    >
+                      {isCreatingNewAddress
+                        ? "Use Existing Address"
+                        : "Create New Address"}
+                    </button>
+                  </div>
+
+                  {isCreatingNewAddress ? (
+                    <div className="space-y-4 bg-gray-50 p-4 rounded-md">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Street Address
+                        </label>
+                        <input
+                          type="text"
+                          className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                          value={newAddress.street}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              street: e.target.value,
+                            })
+                          }
+                          placeholder="Enter street address"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            City
+                          </label>
+                          <input
+                            type="text"
+                            className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                            value={newAddress.city}
+                            onChange={(e) =>
+                              setNewAddress({
+                                ...newAddress,
+                                city: e.target.value,
+                              })
+                            }
+                            placeholder="Enter city"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            State
+                          </label>
+                          <input
+                            type="text"
+                            className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                            value={newAddress.state}
+                            onChange={(e) =>
+                              setNewAddress({
+                                ...newAddress,
+                                state: e.target.value,
+                              })
+                            }
+                            placeholder="Enter state"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          ZIP Code
+                        </label>
+                        <input
+                          type="text"
+                          className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                          value={newAddress.zipCode}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              zipCode: e.target.value,
+                            })
+                          }
+                          placeholder="Enter ZIP code"
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="isDefault"
+                          className="h-4 w-4 text-accent focus:ring-accent border-gray-300 rounded"
+                          checked={newAddress.isDefault}
+                          onChange={(e) =>
+                            setNewAddress({
+                              ...newAddress,
+                              isDefault: e.target.checked,
+                            })
+                          }
+                        />
+                        <label
+                          htmlFor="isDefault"
+                          className="ml-2 block text-sm text-gray-700"
+                        >
+                          Set as default address
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                      value={newOrder.shippingAddress}
+                      onChange={(e) =>
+                        setNewOrder({
+                          ...newOrder,
+                          shippingAddress: e.target.value,
+                        })
+                      }
+                      placeholder="Enter shipping address ID"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -1202,7 +1524,7 @@ const OrdersManager = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tax
+                    Tax ({taxRate}%)
                   </label>
                   <div className="relative rounded-md shadow-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1210,14 +1532,9 @@ const OrdersManager = () => {
                     </div>
                     <input
                       type="number"
-                      className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
-                      value={newOrder.tax || ""}
-                      onChange={(e) =>
-                        setNewOrder({
-                          ...newOrder,
-                          tax: parseFloat(e.target.value) || 0,
-                        })
-                      }
+                      className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent bg-gray-100"
+                      value={newOrder.totalAmount * (taxRate / 100) || ""}
+                      readOnly
                       placeholder="0.00"
                       step="0.01"
                     />
@@ -1289,6 +1606,324 @@ const OrdersManager = () => {
                 onClick={() => handleDeleteOrder(orderToDelete._id)}
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {showEditOrderModal && orderToEdit && (
+        <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div
+            ref={editOrderModalRef}
+            className="bg-white p-8 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h3 className="text-2xl font-semibold text-gray-900">
+                  Edit Order #{orderToEdit._id}
+                </h3>
+                <p className="text-gray-500 mt-1">
+                  Created on{" "}
+                  {new Date(orderToEdit.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowEditOrderModal(false)}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <span className="text-2xl">&times;</span>
+              </button>
+            </div>
+
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    Customer Information
+                  </h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Customer ID
+                      </label>
+                      <input
+                        type="text"
+                        className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                        value={orderToEdit.customer.id || ""}
+                        onChange={(e) =>
+                          setOrderToEdit({
+                            ...orderToEdit,
+                            customer: {
+                              ...orderToEdit.customer,
+                              id: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    Shipping Information
+                  </h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Address ID
+                      </label>
+                      <input
+                        type="text"
+                        className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                        value={orderToEdit.shippingAddress._id || ""}
+                        onChange={(e) =>
+                          setOrderToEdit({
+                            ...orderToEdit,
+                            shippingAddress: {
+                              ...orderToEdit.shippingAddress,
+                              _id: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-b border-gray-200 py-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-lg font-medium">Order Items</h4>
+                  <div className="flex items-center space-x-4">
+                    <select
+                      className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                      value={selectedProduct}
+                      onChange={(e) => setSelectedProduct(e.target.value)}
+                    >
+                      <option value="">Select a product</option>
+                      {availableProducts.map((product) => (
+                        <option key={product._id} value={product._id}>
+                          {product.name} (${product.price})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newProductQuantity}
+                      onChange={(e) =>
+                        setNewProductQuantity(parseInt(e.target.value) || 1)
+                      }
+                      className="w-20 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                    />
+                    <button
+                      onClick={handleAddProduct}
+                      className="px-4 py-2 bg-accent text-white rounded-md hover:bg-accent/90"
+                      disabled={!selectedProduct}
+                    >
+                      Add Product
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {orderToEdit.items.map((item, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Product
+                        </label>
+                        <div className="flex items-center space-x-3">
+                          {item.product.images &&
+                            item.product.images.length > 0 && (
+                              <img
+                                src={item.product.images[0].url}
+                                alt={item.product.name}
+                                className="h-12 w-12 object-cover rounded-md"
+                              />
+                            )}
+                          <div>
+                            <p className="font-medium">{item.product.name}</p>
+                            <p className="text-sm text-gray-500">
+                              ID: {item.product._id}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Quantity
+                        </label>
+                        <input
+                          type="number"
+                          className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                          value={item.quantity}
+                          onChange={(e) => {
+                            const newItems = [...orderToEdit.items];
+                            newItems[index].quantity =
+                              parseInt(e.target.value) || 1;
+                            setOrderToEdit({ ...orderToEdit, items: newItems });
+                          }}
+                          min="1"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <button
+                          onClick={() => handleRemoveProduct(index)}
+                          className="w-full px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                    value={orderToEdit.status}
+                    onChange={(e) =>
+                      setOrderToEdit({
+                        ...orderToEdit,
+                        status: e.target.value as Order["status"],
+                      })
+                    }
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Status
+                  </label>
+                  <select
+                    className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                    value={orderToEdit.payment.status}
+                    onChange={(e) =>
+                      setOrderToEdit({
+                        ...orderToEdit,
+                        payment: {
+                          ...orderToEdit.payment,
+                          status: e.target.value as FormPaymentInfo["status"],
+                        },
+                      })
+                    }
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="failed">Failed</option>
+                    <option value="refunded">Refunded</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 p-5 rounded-lg">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Subtotal
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">$</span>
+                    </div>
+                    <input
+                      type="number"
+                      className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent bg-gray-100"
+                      value={orderToEdit.items.reduce(
+                        (sum, item) => sum + item.product.price * item.quantity,
+                        0
+                      )}
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Shipping Cost
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">$</span>
+                    </div>
+                    <input
+                      type="number"
+                      className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
+                      value={orderToEdit.shippingCost}
+                      onChange={(e) =>
+                        setOrderToEdit({
+                          ...orderToEdit,
+                          shippingCost: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tax ({taxRate}%)
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">$</span>
+                    </div>
+                    <input
+                      type="number"
+                      className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent bg-gray-100"
+                      value={orderToEdit.tax}
+                      readOnly
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-medium">Total Payment:</span>
+                  <span className="text-xl font-semibold">
+                    $
+                    {(
+                      orderToEdit.items.reduce(
+                        (sum, item) => sum + item.product.price * item.quantity,
+                        0
+                      ) +
+                      orderToEdit.shippingCost +
+                      orderToEdit.tax
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end space-x-4">
+              <button
+                className="px-5 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent transition-colors"
+                onClick={() => setShowEditOrderModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-5 py-2 border border-transparent rounded-md shadow-sm text-white bg-accent hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent transition-colors"
+                onClick={handleEditOrder}
+              >
+                Save Changes
               </button>
             </div>
           </div>

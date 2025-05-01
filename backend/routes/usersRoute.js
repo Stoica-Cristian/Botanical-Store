@@ -3,6 +3,8 @@ import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import verifyToken from "../middleware/verifyToken.js";
 import { isAdmin } from "../middleware/authMiddleware.js";
+import Order from "../models/Order.js";
+import PaymentMethod from "../models/PaymentMethod.js";
 
 const router = express.Router();
 router.use(verifyToken);
@@ -57,8 +59,39 @@ router.put("/profile", async (req, res) => {
   }
 });
 
-// TODO: Implement stats
-router.get("/stats", async (req, res) => {});
+router.get("/stats", async (req, res) => {
+  console.log("📊 RUTA: /users/stats - Obținere statistici utilizator");
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      console.log(
+        `❌ Utilizator negăsit pentru statistici: ID=${req.user._id}`
+      );
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Get order count
+    const orderCount = await Order.countDocuments({ customer: user._id });
+
+    // Get saved cards count
+    const savedCardsCount = await PaymentMethod.countDocuments({
+      user: user._id,
+    });
+
+    // Calculate user stats according to the frontend interface
+    const stats = {
+      orders: orderCount,
+      wishlist: user.wishlist?.length || 0,
+      savedCards: savedCardsCount,
+    };
+
+    console.log(`✅ Statistici obținute cu succes pentru: ${user.email}`);
+    res.status(200).json(stats);
+  } catch (error) {
+    console.log(`❌ Eroare la obținerea statisticilor: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 router.put("/password", async (req, res) => {
   console.log("🔐 RUTA: /users/password - Actualizare parolă utilizator");

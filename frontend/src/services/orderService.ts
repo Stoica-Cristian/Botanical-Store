@@ -101,5 +101,16 @@ export const orderService = {
       }
     });
     return response.data;
+  },
+
+  updateOrder: async (orderId: string, orderData: Partial<Order>, adminId: string) => {
+    const config = adminId ? {
+      headers: {
+        "X-Admin-Id": adminId,
+      },
+    } : undefined;
+    
+    const response = await api.put<Order>(`/api/orders/${orderId}`, orderData, config);
+    return response.data;
   }
 }; 
