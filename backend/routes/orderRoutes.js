@@ -222,6 +222,33 @@ router.patch("/:orderId/status", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
+router.put("/:orderId", verifyToken, isAdmin, async (req, res) => {
+  try {
+    const order = await Order.findByIdAndUpdate(
+      req.params.orderId,
+      {
+        ...req.body,
+        updatedAt: new Date(),
+      },
+      { new: true }
+    )
+      .populate("customer", "firstName lastName email phoneNumber")
+      .populate("items.product")
+      .populate("shippingAddress");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.json(order);
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res
+      .status(500)
+      .json({ message: "Error updating order", error: error.message });
+  }
+});
+
 router.delete("/:orderId", verifyToken, isAdmin, async (req, res) => {
   try {
     console.log("🔍 Deleting order:", req.params.orderId);

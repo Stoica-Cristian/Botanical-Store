@@ -69,7 +69,7 @@ const OrdersManager = () => {
     ],
     shippingAddress: "",
     payment: {
-      method: "credit_card",
+      method: "Credit Card",
       status: "pending",
       amount: 0,
     },
@@ -151,6 +151,15 @@ const OrdersManager = () => {
         setShowDeleteModal(false);
         setOrderToDelete(null);
       }
+
+      if (
+        showEditOrderModal &&
+        editOrderModalRef.current &&
+        !editOrderModalRef.current.contains(event.target as Node)
+      ) {
+        setShowEditOrderModal(false);
+        setOrderToEdit(null);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
@@ -162,6 +171,7 @@ const OrdersManager = () => {
     showStatusUpdateModal,
     showCreateOrderModal,
     showDeleteModal,
+    showEditOrderModal,
   ]);
 
   useEffect(() => {
@@ -445,7 +455,7 @@ const OrdersManager = () => {
         ],
         shippingAddress: "",
         payment: {
-          method: "credit_card",
+          method: "Credit Card",
           status: "pending",
           amount: 0,
         },
@@ -485,10 +495,6 @@ const OrdersManager = () => {
   };
 
   const handleEditClick = (order: Order) => {
-    console.log("Order being edited:", order); // Debug log
-    console.log("Customer ID:", order.customer.id); // Debug log
-    console.log("Address ID:", order.shippingAddress._id); // Debug log
-
     setOrderToEdit({
       ...order,
       customer: {
@@ -558,17 +564,38 @@ const OrdersManager = () => {
 
     setOrderToEdit((prev) => {
       if (!prev) return prev;
-      return {
-        ...prev,
-        items: [
-          ...prev.items,
-          {
-            product,
-            quantity: newProductQuantity,
-            price: product.price,
-          },
-        ],
-      };
+
+      // Check if product already exists in the order
+      const existingItemIndex = prev.items.findIndex(
+        (item) => item.product._id === selectedProduct
+      );
+
+      if (existingItemIndex !== -1) {
+        // Product exists, update quantity
+        const updatedItems = [...prev.items];
+        updatedItems[existingItemIndex] = {
+          ...updatedItems[existingItemIndex],
+          quantity:
+            updatedItems[existingItemIndex].quantity + newProductQuantity,
+        };
+        return {
+          ...prev,
+          items: updatedItems,
+        };
+      } else {
+        // Product doesn't exist, add new item
+        return {
+          ...prev,
+          items: [
+            ...prev.items,
+            {
+              product,
+              quantity: newProductQuantity,
+              price: product.price,
+            },
+          ],
+        };
+      }
     });
 
     setSelectedProduct("");
@@ -582,6 +609,28 @@ const OrdersManager = () => {
         ...prev,
         items: prev.items.filter((_, i) => i !== index),
       };
+    });
+  };
+
+  const resetNewOrder = () => {
+    setNewOrder({
+      customer: "",
+      items: [
+        {
+          product: "",
+          quantity: 1,
+        },
+      ],
+      shippingAddress: "",
+      payment: {
+        method: "Credit Card",
+        status: "pending",
+        amount: 0,
+      },
+      status: "pending",
+      totalAmount: 0,
+      shippingCost: 0,
+      tax: 0,
     });
   };
 
@@ -816,12 +865,12 @@ const OrdersManager = () => {
                 of {pagination.total} results
               </span>
               <select
-                className="border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-accent focus:border-accent"
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-colors duration-200"
                 value={itemsPerPage}
                 onChange={handleItemsPerPageChange}
               >
                 {[10, 25, 50].map((value) => (
-                  <option key={value} value={value}>
+                  <option key={value} value={value} className="text-sm">
                     {value} per page
                   </option>
                 ))}
@@ -1533,7 +1582,10 @@ const OrdersManager = () => {
                     <input
                       type="number"
                       className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent bg-gray-100"
-                      value={newOrder.totalAmount * (taxRate / 100) || ""}
+                      value={
+                        (newOrder.totalAmount * (taxRate / 100)).toFixed(2) ||
+                        ""
+                      }
                       readOnly
                       placeholder="0.00"
                       step="0.01"
@@ -1651,7 +1703,7 @@ const OrdersManager = () => {
                       <input
                         type="text"
                         className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
-                        value={orderToEdit.customer.id || ""}
+                        value={orderToEdit.customer._id || ""}
                         onChange={(e) =>
                           setOrderToEdit({
                             ...orderToEdit,
@@ -1887,7 +1939,7 @@ const OrdersManager = () => {
                     <input
                       type="number"
                       className="mt-1 block p-2 w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent bg-gray-100"
-                      value={orderToEdit.tax}
+                      value={orderToEdit.tax.toFixed(2)}
                       readOnly
                     />
                   </div>
