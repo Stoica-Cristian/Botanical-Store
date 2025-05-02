@@ -38,10 +38,13 @@ interface ProductImage {
     updatedAt: string;
   }
   
-  interface PotStyle {
+  interface Pot {
+    _id?: string;
     name: string;
-    value: string;
     image: string;
+    quantity: number;
+    createdAt?: string;
+    updatedAt?: string;
   }
   
   interface Product {
@@ -64,7 +67,7 @@ interface ProductImage {
   }
 
 export type { Product };
-export type { PotStyle };
+export type { Pot };
 export type { ProductImage };
 export type { ProductSpecification };
 export type { ProductFeature };

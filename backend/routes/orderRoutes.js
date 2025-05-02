@@ -1,7 +1,7 @@
 import express from "express";
 import { isAdmin } from "../middleware/authMiddleware.js";
 import verifyToken from "../middleware/verifyToken.js";
-import Order from "../models/Order.js";
+import Order from "../models/orderModel.js";
 import Settings from "../models/settings.js";
 
 const router = express.Router();

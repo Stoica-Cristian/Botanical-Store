@@ -16,6 +16,8 @@ interface FilterSectionProps {
   selectedRating: number | null;
   setSelectedRating: (rating: number | null) => void;
   onClearFilters: () => void;
+  categories: string[];
+  isLoading: boolean;
 }
 
 const FilterSection = ({
@@ -28,18 +30,9 @@ const FilterSection = ({
   selectedRating,
   setSelectedRating,
   onClearFilters,
+  categories,
+  isLoading,
 }: FilterSectionProps) => {
-  const categories = [
-    "Indoor Plants",
-    "Outdoor Plants",
-    "Flowering Plants",
-    "Herbs",
-    "Fruit Trees",
-    "Pots & Planters",
-    "Garden Tools",
-    "Seeds & Bulbs",
-  ];
-
   const handleCategoryToggle = (category: string) => {
     setSelectedCategories(
       selectedCategories.includes(category)
@@ -87,29 +80,37 @@ const FilterSection = ({
           </span>
         </div>
         <div className="space-y-2">
-          {categories.map((category) => (
-            <label
-              key={category}
-              className="flex items-center group cursor-pointer"
-            >
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={selectedCategories.includes(category)}
-                  onChange={() => handleCategoryToggle(category)}
-                  className="sr-only peer"
-                />
-                <div className="w-5 h-5 border-2 border-gray-300 rounded-md peer-checked:border-accent peer-checked:bg-accent transition duration-200 flex items-center justify-center">
-                  {selectedCategories.includes(category) && (
-                    <CheckIcon className="w-4 h-4 text-white" />
-                  )}
+          {isLoading ? (
+            <div className="animate-pulse space-y-2">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="h-6 bg-gray-200 rounded w-3/4"></div>
+              ))}
+            </div>
+          ) : (
+            categories.map((category) => (
+              <label
+                key={category}
+                className="flex items-center group cursor-pointer"
+              >
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={selectedCategories.includes(category)}
+                    onChange={() => handleCategoryToggle(category)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-5 h-5 border-2 border-gray-300 rounded-md peer-checked:border-accent peer-checked:bg-accent transition duration-200 flex items-center justify-center">
+                    {selectedCategories.includes(category) && (
+                      <CheckIcon className="w-4 h-4 text-white" />
+                    )}
+                  </div>
                 </div>
-              </div>
-              <span className="ml-3 text-sm text-gray-600 group-hover:text-gray-900 transition duration-200">
-                {category}
-              </span>
-            </label>
-          ))}
+                <span className="ml-3 text-sm text-gray-600 group-hover:text-gray-900 transition duration-200">
+                  {category}
+                </span>
+              </label>
+            ))
+          )}
         </div>
       </div>
 

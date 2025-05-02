@@ -3,7 +3,7 @@ import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import verifyToken from "../middleware/verifyToken.js";
 import { isAdmin } from "../middleware/authMiddleware.js";
-import Order from "../models/Order.js";
+import Order from "../models/orderModel.js";
 import PaymentMethod from "../models/PaymentMethod.js";
 
 const router = express.Router();

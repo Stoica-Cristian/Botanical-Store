@@ -7,6 +7,7 @@ import ProductGrid from "../components/store/ProductGrid";
 import StoreHeader from "../components/store/StoreHeader";
 import { Product } from "../types/product";
 import { ArrowUpIcon } from "@heroicons/react/24/outline";
+import { productService } from "../services/productService";
 
 const Store = () => {
   // Filter states
@@ -15,6 +16,27 @@ const Store = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const products = await productService.getAllProducts();
+        // Extract unique categories and sort them alphabetically
+        const uniqueCategories = Array.from(
+          new Set(products.map((product) => product.category))
+        ).sort();
+        setCategories(uniqueCategories);
+      } catch (error) {
+        console.error("Error fetching products for categories:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -90,6 +112,8 @@ const Store = () => {
                 selectedRating={selectedRating}
                 setSelectedRating={setSelectedRating}
                 onClearFilters={handleClearFilters}
+                categories={categories}
+                isLoading={loading}
               />
             </div>
 

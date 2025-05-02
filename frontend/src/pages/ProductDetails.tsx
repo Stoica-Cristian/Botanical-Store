@@ -21,29 +21,32 @@ import ToastContainer, { ToastData } from "../components/ui/ToastContainer";
 import { Tab } from "@headlessui/react";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
-import { Product, PotStyle, Review } from "../types/product";
+import { Product, Pot, Review } from "../types/product";
 import productService from "../services/productService";
 import { useAuth } from "../context/AuthContext";
 import reviewService from "../services/reviewService";
 
-const potStyles: PotStyle[] = [
+const potStyles: Pot[] = [
   {
+    _id: "1",
     name: "Terra Cotta",
-    value: "terra-cotta",
     image:
       "https://media.istockphoto.com/id/1210620582/ro/fotografie/gradinarit-interior-potting-plante-de-apartament-suculente.jpg?s=612x612&w=0&k=20&c=OSyTYwSfIr8fXUo5L0a6kkU1tRDlnw6iyp4N-fM5hes=",
+    quantity: 500,
   },
   {
+    _id: "2",
     name: "Ceramic White",
-    value: "ceramic-white",
     image:
       "https://images.unsplash.com/photo-1463320898484-cdee8141c787?w=700&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDJ8fHxlbnwwfHx8fHw%3D",
+    quantity: 500,
   },
   {
+    _id: "3",
     name: "Ceramic Black",
-    value: "ceramic-black",
     image:
       "https://images.unsplash.com/photo-1606661426858-4ccc05e25c71?q=80&w=2574&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    quantity: 10,
   },
 ];
 
@@ -52,9 +55,7 @@ const ProductDetails = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPotStyle, setSelectedPotStyle] = useState<PotStyle | null>(
-    null
-  );
+  const [selectedPotStyle, setSelectedPotStyle] = useState<Pot | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -593,30 +594,65 @@ const ProductDetails = () => {
             {/* Pot Style Selection */}
             <div className="my-10 mb-18">
               <label className="block text-sm font-medium text-gray-700 mb-4">
-                POT STYLE:
+                SELECT POT STYLE
               </label>
               <div className="flex flex-wrap gap-6 justify-center sm:justify-start">
-                {potStyles.map((potStyle) => (
-                  <button
-                    key={potStyle.value}
-                    onClick={() => setSelectedPotStyle(potStyle)}
-                    className={`group relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl transition-all ${
-                      selectedPotStyle?.value === potStyle.value
-                        ? "ring-2 ring-accent ring-offset-2"
-                        : "hover:ring-2 hover:ring-gray-300 hover:ring-offset-2"
-                    }`}
-                  >
-                    <img
-                      src={potStyle.image}
-                      alt={potStyle.name}
-                      className="absolute inset-0 rounded-xl object-cover w-full h-full"
-                    />
-                    <span className="sr-only">{potStyle.name}</span>
-                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs whitespace-nowrap font-medium">
-                      {potStyle.name}
+                {potStyles.map((potStyle) => {
+                  const isOutOfStock = potStyle.quantity <= 0;
+                  const isSelected = selectedPotStyle?.name === potStyle.name;
+
+                  return (
+                    <div key={potStyle._id} className="relative">
+                      <button
+                        onClick={() => setSelectedPotStyle(potStyle)}
+                        disabled={isOutOfStock}
+                        className={`
+                          relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl transition-all duration-200
+                          ${
+                            isSelected
+                              ? "ring-2 ring-accent ring-offset-2 shadow-lg transform scale-105"
+                              : isOutOfStock
+                              ? "opacity-50 cursor-not-allowed grayscale bg-gray-100"
+                              : "hover:ring-2 hover:ring-gray-300 hover:ring-offset-2 hover:shadow-md hover:scale-102"
+                          }
+                        `}
+                      >
+                        <img
+                          src={potStyle.image}
+                          alt={potStyle.name}
+                          className={`
+                            absolute inset-0 rounded-xl object-cover w-full h-full
+                            ${isSelected ? "brightness-110" : ""}
+                          `}
+                        />
+                        {isSelected && (
+                          <div className="absolute inset-0 rounded-xl bg-accent/10 border-2 border-accent flex items-center justify-center">
+                            <div className="bg-accent rounded-full p-1">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-4 w-4 text-white"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
+                      </button>
+
+                      <div className="absolute left-1/2 transform -translate-x-1/2 text-center">
+                        <span className="block text-sm font-medium text-gray-800">
+                          {potStyle.name}
+                        </span>
+                      </div>
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

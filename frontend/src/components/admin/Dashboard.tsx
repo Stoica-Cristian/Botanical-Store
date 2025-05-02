@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CurrencyDollarIcon,
   ShoppingBagIcon,
@@ -19,6 +19,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { statsService, AdminStats } from "../../services/statsService";
+import { useAuth } from "../../context/AuthContext";
 
 interface DashboardStat {
   title: string;
@@ -28,159 +30,6 @@ interface DashboardStat {
   color: string;
 }
 
-interface DashboardStats {
-  totalSales: number;
-  totalOrders: number;
-  totalUsers: number;
-  totalProducts: number;
-  recentOrders: any[];
-  topProducts: {
-    id: number;
-    name: string;
-    sales: number;
-    revenue: number;
-  }[];
-}
-
-// Mock data
-const mockData: DashboardStats = {
-  totalSales: 15680,
-  totalOrders: 156,
-  totalUsers: 432,
-  totalProducts: 89,
-  recentOrders: [
-    {
-      id: 1,
-      orderNumber: "ORD-2023-001",
-      customer: {
-        id: 1,
-        name: "John Doe",
-        email: "john@example.com",
-      },
-      products: [
-        {
-          id: 1,
-          name: "Snake Plant",
-          quantity: 2,
-          price: 29.99,
-        },
-      ],
-      totalAmount: 59.98,
-      status: "delivered",
-      paymentStatus: "paid",
-      createdAt: "2023-10-15T08:30:00Z",
-      updatedAt: "2023-10-16T14:20:00Z",
-      shippingAddress: {
-        street: "123 Main St",
-        city: "Anytown",
-        state: "ST",
-        zipCode: "12345",
-        country: "Country",
-      },
-    },
-    {
-      id: 2,
-      orderNumber: "ORD-2023-002",
-      customer: {
-        id: 2,
-        name: "Jane Smith",
-        email: "jane@example.com",
-      },
-      products: [
-        {
-          id: 3,
-          name: "Monstera Deliciosa",
-          quantity: 1,
-          price: 49.99,
-        },
-      ],
-      totalAmount: 49.99,
-      status: "shipped",
-      paymentStatus: "paid",
-      createdAt: "2023-10-16T10:15:00Z",
-      updatedAt: "2023-10-17T09:30:00Z",
-      shippingAddress: {
-        street: "456 Oak Ave",
-        city: "Somewhere",
-        state: "ST",
-        zipCode: "67890",
-        country: "Country",
-      },
-    },
-    {
-      id: 3,
-      orderNumber: "ORD-2023-003",
-      customer: {
-        id: 3,
-        name: "Michael Johnson",
-        email: "michael@example.com",
-      },
-      products: [
-        {
-          id: 2,
-          name: "Fiddle Leaf Fig",
-          quantity: 1,
-          price: 59.99,
-        },
-      ],
-      totalAmount: 59.99,
-      status: "processing",
-      paymentStatus: "paid",
-      createdAt: "2023-10-17T14:45:00Z",
-      updatedAt: "2023-10-17T15:00:00Z",
-      shippingAddress: {
-        street: "789 Pine Rd",
-        city: "Othertown",
-        state: "ST",
-        zipCode: "54321",
-        country: "Country",
-      },
-    },
-  ],
-  topProducts: [
-    {
-      id: 1,
-      name: "Snake Plant",
-      sales: 42,
-      revenue: 1259.58,
-    },
-    {
-      id: 2,
-      name: "Fiddle Leaf Fig",
-      sales: 38,
-      revenue: 1139.62,
-    },
-    {
-      id: 3,
-      name: "Monstera Deliciosa",
-      sales: 35,
-      revenue: 1749.65,
-    },
-  ],
-};
-
-// Mock chart data
-const salesData = [
-  { name: "Jan", sales: 4000 },
-  { name: "Feb", sales: 3000 },
-  { name: "Mar", sales: 5000 },
-  { name: "Apr", sales: 4500 },
-  { name: "May", sales: 6000 },
-  { name: "Jun", sales: 5500 },
-  { name: "Jul", sales: 7000 },
-  { name: "Aug", sales: 6500 },
-  { name: "Sep", sales: 8000 },
-  { name: "Oct", sales: 7500 },
-];
-
-const categoryData = [
-  { name: "Indoor Plants", value: 45 },
-  { name: "Outdoor Plants", value: 25 },
-  { name: "Pots", value: 15 },
-  { name: "Soil & Fertilizers", value: 10 },
-  { name: "Accessories", value: 5 },
-];
-
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
 interface LabelProps {
@@ -189,35 +38,74 @@ interface LabelProps {
 }
 
 const Dashboard = () => {
-  const [stats] = useState<DashboardStats>(mockData);
+  const { user } = useAuth();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const data = await statsService.getAdminStats(user?.id || "");
+        setStats(data);
+      } catch (err) {
+        setError("Failed to fetch statistics. Please try again later.");
+        console.error("Error fetching stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return null;
+  }
 
   const dashboardStats: DashboardStat[] = [
     {
       title: "Total Sales",
       value: `$${stats.totalSales.toLocaleString()}`,
       icon: CurrencyDollarIcon,
-      change: 12.5,
+      change: stats.changes.sales,
       color: "bg-blue-500",
     },
     {
       title: "Total Orders",
       value: stats.totalOrders,
       icon: ShoppingBagIcon,
-      change: 8.2,
+      change: stats.changes.orders,
       color: "bg-green-500",
     },
     {
       title: "Total Users",
       value: stats.totalUsers,
       icon: UserIcon,
-      change: 15.3,
+      change: stats.changes.users,
       color: "bg-purple-500",
     },
     {
       title: "Total Products",
       value: stats.totalProducts,
       icon: CubeIcon,
-      change: -2.4,
+      change: stats.changes.products,
       color: "bg-pink-500",
     },
   ];
@@ -278,7 +166,7 @@ const Dashboard = () => {
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={salesData}
+                data={stats.salesData}
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -306,18 +194,20 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={categoryData}
+                  data={stats.categoryData}
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }: LabelProps) =>
-                    `${name}: ${(percent * 100).toFixed(0)}%`
-                  }
-                  outerRadius={80}
+                  labelLine={{ stroke: "#374151", strokeWidth: 1 }}
+                  label={({ name, percent }: LabelProps) => (
+                    <text x={0} y={10} dy={8} fontSize={12} fontWeight={500}>
+                      {`${name}: ${(percent * 100).toFixed(0)}%`}
+                    </text>
+                  )}
+                  outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {categoryData.map((_entry, index) => (
+                  {stats.categoryData.map((_entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}
@@ -347,12 +237,6 @@ const Dashboard = () => {
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Order
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
                     Customer
                   </th>
                   <th
@@ -378,11 +262,6 @@ const Dashboard = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {stats.recentOrders.map((order) => (
                   <tr key={order.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {order.orderNumber}
-                      </div>
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
                         {order.customer.name}
