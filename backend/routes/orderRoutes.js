@@ -2,11 +2,12 @@ import express from "express";
 import { isAdmin } from "../middleware/authMiddleware.js";
 import verifyToken from "../middleware/verifyToken.js";
 import Order from "../models/Order.js";
+import Settings from "../models/settings.js";
 
 const router = express.Router();
 
-// Get all orders with pagination and filters
-router.get("/", verifyToken, isAdmin, async (req, res) => {
+// Get all orders for admin with pagination and filters
+router.get("/admin", verifyToken, isAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 10, status, search } = req.query;
     const skip = (page - 1) * limit;
@@ -29,7 +30,8 @@ router.get("/", verifyToken, isAdmin, async (req, res) => {
       .limit(parseInt(limit))
       .sort({ createdAt: -1 })
       .populate("customer", "firstName lastName email phoneNumber")
-      .populate("items.product");
+      .populate("items.product")
+      .populate("shippingAddress");
 
     const total = await Order.countDocuments(query);
 
@@ -49,10 +51,36 @@ router.get("/", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
+// Get user's own orders
+router.get("/", verifyToken, async (req, res) => {
+  try {
+    const orders = await Order.find({ customer: req.user._id })
+      .sort({ createdAt: -1 })
+      .populate("customer")
+      .populate("items.product")
+      .populate("shippingAddress");
+
+    res.json(orders);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error fetching orders", error: error.message });
+  }
+});
+
 // Create new order
-router.post("/", verifyToken, isAdmin, async (req, res) => {
+router.post("/", verifyToken, async (req, res) => {
   console.log("🔍 Received request body:", req.body);
   try {
+    // Get settings for tax rate
+    const settings = await Settings.findOne();
+    const taxRate = settings?.taxRate || 0;
+
+    // Calculate tax amount
+    const taxAmount = Number(
+      ((req.body.totalAmount * taxRate) / 100).toFixed(2)
+    );
+
     // Validate items have valid prices
     const invalidItems = req.body.items.filter(
       (item) => !item.price || typeof item.price !== "number" || item.price <= 0
@@ -65,6 +93,18 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
       });
     }
 
+    // Check if user is admin
+    const isAdmin =
+      req.headers["x-admin-id"] && req.headers["x-admin-id"] === req.user._id;
+
+    // If user is not admin, ensure they can only create orders for themselves
+    if (!isAdmin && req.body.customer._id != req.user._id) {
+      console.log(req.body.customer._id, req.user._id);
+      return res.status(403).json({
+        message: "You can only create orders for yourself",
+      });
+    }
+
     console.log("📦 Creating new order with data:", {
       customer: req.body.customer,
       items: req.body.items?.length,
@@ -73,6 +113,7 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
 
     const order = new Order({
       ...req.body,
+      tax: taxAmount,
       status: "pending",
       payment: {
         ...req.body.payment,
@@ -85,7 +126,8 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
 
     const populatedOrder = await Order.findById(order._id)
       .populate("customer", "firstName lastName email phoneNumber")
-      .populate("items.product");
+      .populate("items.product")
+      .populate("shippingAddress");
 
     console.log(`📤 Sending response for order ${order._id}`);
     res.status(201).json(populatedOrder);
@@ -97,7 +139,6 @@ router.post("/", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// Bulk update order status - IMPORTANT: This must come before the /:orderId routes
 router.patch("/bulk-status", verifyToken, isAdmin, async (req, res) => {
   try {
     const { orderIds, status, notes } = req.body;
@@ -113,7 +154,8 @@ router.patch("/bulk-status", verifyToken, isAdmin, async (req, res) => {
 
     const orders = await Order.find({ _id: { $in: orderIds } })
       .populate("customer", "firstName lastName email phoneNumber")
-      .populate("items.product");
+      .populate("items.product")
+      .populate("shippingAddress");
 
     res.json(orders);
   } catch (error) {
@@ -123,15 +165,25 @@ router.patch("/bulk-status", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// Get order by ID
-router.get("/:orderId", verifyToken, isAdmin, async (req, res) => {
+router.get("/:orderId", verifyToken, async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId)
       .populate("customer", "firstName lastName email phoneNumber")
-      .populate("items.product");
+      .populate("items.product")
+      .populate("shippingAddress");
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check if user is admin or the order belongs to the user
+    const isAdminUser =
+      req.headers["x-admin-id"] && req.headers["x-admin-id"] === req.user._id;
+    if (
+      !isAdminUser &&
+      order.customer._id.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     res.json(order);
@@ -142,7 +194,6 @@ router.get("/:orderId", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// Update order status
 router.patch("/:orderId/status", verifyToken, isAdmin, async (req, res) => {
   try {
     const { status, notes } = req.body;
@@ -156,7 +207,8 @@ router.patch("/:orderId/status", verifyToken, isAdmin, async (req, res) => {
       { new: true }
     )
       .populate("customer", "firstName lastName email phoneNumber")
-      .populate("items.product");
+      .populate("items.product")
+      .populate("shippingAddress");
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -170,7 +222,6 @@ router.patch("/:orderId/status", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// Delete order
 router.delete("/:orderId", verifyToken, isAdmin, async (req, res) => {
   try {
     console.log("🔍 Deleting order:", req.params.orderId);

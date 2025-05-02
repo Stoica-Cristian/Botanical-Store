@@ -42,6 +42,16 @@ export const settingsService = {
     return response.data;
   },
 
+  async getShippingMethods(): Promise<ShippingMethod[]> {
+    const response = await api.get('/api/settings/shipping');
+    return response.data;
+  },
+
+  async getPaymentGateways(): Promise<PaymentGateway[]> {
+    const response = await api.get('/api/settings/payment');
+    return response.data;
+  },
+
   async updateSettings(settings: Partial<Settings>, adminId: string): Promise<Settings> {
     const response = await api.put('/api/settings', settings, {
       headers: {

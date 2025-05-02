@@ -8,10 +8,9 @@ import Settings from "../models/settings.js";
 const router = express.Router();
 
 router.use(verifyToken);
-router.use(isAdmin);
 
 // Get current settings with populated shipping methods and payment gateways
-router.get("/", async (req, res) => {
+router.get("/", isAdmin, async (req, res) => {
   try {
     let settings = await Settings.findOne()
       .populate("shippingMethods")
@@ -30,7 +29,7 @@ router.get("/", async (req, res) => {
 });
 
 // Update general settings
-router.put("/", async (req, res) => {
+router.put("/", isAdmin, async (req, res) => {
   try {
     const { storeName, currency, taxRate } = req.body;
 
@@ -56,7 +55,12 @@ router.put("/", async (req, res) => {
 });
 
 // Shipping Methods Routes
-router.post("/shipping", async (req, res) => {
+router.get("/shipping", async (req, res) => {
+  const shippingMethods = await ShippingMethod.find();
+  res.json(shippingMethods);
+});
+
+router.post("/shipping", isAdmin, async (req, res) => {
   try {
     const { name, price, estimatedDelivery, isDefault } = req.body;
 
@@ -91,7 +95,7 @@ router.post("/shipping", async (req, res) => {
   }
 });
 
-router.put("/shipping/:id", async (req, res) => {
+router.put("/shipping/:id", isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, price, estimatedDelivery, isDefault } = req.body;
@@ -121,7 +125,7 @@ router.put("/shipping/:id", async (req, res) => {
   }
 });
 
-router.delete("/shipping/:id", async (req, res) => {
+router.delete("/shipping/:id", isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -143,7 +147,13 @@ router.delete("/shipping/:id", async (req, res) => {
 });
 
 // Payment Gateway Routes
-router.post("/payment", async (req, res) => {
+
+router.get("/payment", async (req, res) => {
+  const paymentGateways = await PaymentGateway.find();
+  res.json(paymentGateways);
+});
+
+router.post("/payment", isAdmin, async (req, res) => {
   try {
     const { name, enabled, credentials, isDefault } = req.body;
 
@@ -178,7 +188,7 @@ router.post("/payment", async (req, res) => {
   }
 });
 
-router.put("/payment/:id", async (req, res) => {
+router.put("/payment/:id", isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, enabled, credentials, isDefault } = req.body;
@@ -208,7 +218,7 @@ router.put("/payment/:id", async (req, res) => {
   }
 });
 
-router.delete("/payment/:id", async (req, res) => {
+router.delete("/payment/:id", isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 

@@ -8,7 +8,7 @@ export interface FormOrderItem {
 }
 
 export interface FormPaymentInfo {
-  method: "credit_card" | "paypal" | "bank_transfer";
+  method: "Credit Card" | "Paypal" | "Bank Transfer";
   status: "pending" | "paid" | "failed" | "refunded";
   amount: number;
 }
@@ -29,7 +29,8 @@ export interface FormOrderData {
 }
 
 export const orderService = {
-  getOrders: async (page: number = 1, limit: number = 10, adminId: string, status?: string, search?: string) => {
+  // Get orders for admin with pagination
+  getAdminOrders: async (page: number = 1, limit: number = 10, adminId: string, status?: string, search?: string) => {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
@@ -37,17 +38,20 @@ export const orderService = {
       ...(search && { search })
     });
 
-    const config = adminId ? {
+    const response = await api.get<OrderResponse>(`/api/orders/admin?${params}`, {
       headers: {
         "X-Admin-Id": adminId,
       },
-    } : undefined;
-    
-    const response = await api.get<OrderResponse>(`/api/orders?${params}`, config);
+    });
     return response.data;
   },
 
-  getOrderById: async (orderId: string, adminId: string) => {
+  getUserOrders: async () => {
+    const response = await api.get<Order[]>(`/api/orders`);
+    return response.data;
+  },
+
+  getOrderById: async (orderId: string, adminId?: string) => {
     const config = adminId ? {
       headers: {
         "X-Admin-Id": adminId,
@@ -58,7 +62,7 @@ export const orderService = {
     return response.data;
   },
 
-  createOrder: async (orderData: FormOrderData, adminId: string) => {
+  createOrder: async (orderData: FormOrderData, adminId?: string) => {
     const config = adminId ? {
       headers: {
         "X-Admin-Id": adminId,
@@ -70,47 +74,41 @@ export const orderService = {
   },
 
   updateOrderStatus: async (orderId: string, status: OrderStatusUpdate, adminId: string) => {
-    const config = adminId ? {
+    const response = await api.patch<Order>(`/api/orders/${orderId}/status`, status, {
       headers: {
         "X-Admin-Id": adminId,
       },
-    } : undefined;
-    
-    const response = await api.patch<Order>(`/api/orders/${orderId}/status`, status, config);
+    });
     return response.data;
   },
 
   updateBulkOrderStatus: async (orderIds: string[], status: OrderStatusUpdate, adminId: string) => {
-    const config = adminId ? {
-      headers: {
-        "X-Admin-Id": adminId,
-      },
-    } : undefined;
-    
     const response = await api.patch<Order[]>('/api/orders/bulk-status', {
       orderIds,
       status
-    }, config);
+    }, {
+      headers: {
+        "X-Admin-Id": adminId,
+      },
+    });
     return response.data;
   },
 
   deleteOrder: async (orderId: string, adminId: string) => {
     const response = await api.delete(`/api/orders/${orderId}`, {
       headers: {
-        "x-admin-id": adminId,
+        "X-Admin-Id": adminId,
       }
     });
     return response.data;
   },
 
   updateOrder: async (orderId: string, orderData: Partial<Order>, adminId: string) => {
-    const config = adminId ? {
+    const response = await api.put<Order>(`/api/orders/${orderId}`, orderData, {
       headers: {
         "X-Admin-Id": adminId,
       },
-    } : undefined;
-    
-    const response = await api.put<Order>(`/api/orders/${orderId}`, orderData, config);
+    });
     return response.data;
   }
-}; 
+};

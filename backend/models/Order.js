@@ -20,7 +20,7 @@ const orderItemSchema = new mongoose.Schema({
 const paymentInfoSchema = new mongoose.Schema({
   method: {
     type: String,
-    enum: ["credit_card", "paypal", "bank_transfer"],
+    enum: ["Credit Card", "Paypal", "Bank Transfer"],
     required: true,
   },
   status: {
@@ -71,13 +71,6 @@ const orderSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-
-// Add indexes for better query performance
-orderSchema.index({ status: 1 });
-orderSchema.index({ "customer.firstName": 1 });
-orderSchema.index({ "customer.lastName": 1 });
-orderSchema.index({ "customer.email": 1 });
-orderSchema.index({ createdAt: -1 });
 
 const Order = mongoose.model("Order", orderSchema);
 

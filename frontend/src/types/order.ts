@@ -4,7 +4,7 @@ import { User } from './user';
 
 // Types for Payment Information
 export interface PaymentInfo {
-  method: 'credit_card' | 'paypal' | 'bank_transfer';
+  method: 'Credit Card' | 'Paypal' | 'Bank Transfer';
   status: 'pending' | 'paid' | 'failed' | 'refunded';
   amount: number;
 }

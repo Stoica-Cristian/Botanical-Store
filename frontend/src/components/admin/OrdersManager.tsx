@@ -207,7 +207,7 @@ const OrdersManager = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const data = await orderService.getOrders(
+      const data = await orderService.getAdminOrders(
         currentPage,
         itemsPerPage,
         user?.id || "",
