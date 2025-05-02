@@ -8,13 +8,15 @@ import {
 } from "@heroicons/react/24/outline";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import ToastContainer, { ToastData } from "../components/ui/ToastContainer";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 
 const Cart = () => {
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const { cart, removeFromCart, updateQuantity, totalPrice } = useCart();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const showToast = (type: "success" | "error", message: string) => {
@@ -28,7 +30,7 @@ const Cart = () => {
     );
   };
 
-  const handleUpdateQuantity = (id: number, newQuantity: number) => {
+  const handleUpdateQuantity = (id: string, newQuantity: number) => {
     const item = cart.find((item) => item.id === id);
 
     if (!item) return;
@@ -41,7 +43,7 @@ const Cart = () => {
     updateQuantity(id, newQuantity);
   };
 
-  const handleRemoveItem = (id: number) => {
+  const handleRemoveItem = (id: string) => {
     const itemToRemove = cart.find((item) => item.id === id);
     if (itemToRemove) {
       removeFromCart(id);
@@ -60,6 +62,10 @@ const Cart = () => {
   const subtotal = totalPrice;
   const shipping = cart.length > 0 ? 15.0 : 0;
   const total = subtotal + shipping;
+
+  if (!authLoading && !isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   if (cart.length === 0) {
     return (

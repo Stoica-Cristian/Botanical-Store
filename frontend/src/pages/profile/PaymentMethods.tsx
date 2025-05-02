@@ -5,6 +5,8 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ToastContainer, { ToastData } from "../../components/ui/ToastContainer";
@@ -12,6 +14,7 @@ import { PaymentMethod } from "../../types/paymentMethod";
 import { paymentMethodService } from "../../services/paymentMethodService";
 
 const PaymentMethods = () => {
+  const { isAuthenticated, loading } = useAuth();
   const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -105,6 +108,11 @@ const PaymentMethods = () => {
       }
     } catch (error) {}
   };
+
+  // Redirect if user is not authenticated and auth loading is complete
+  if (!loading && !isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   if (isLoading) {
     return (

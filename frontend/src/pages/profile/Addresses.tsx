@@ -5,13 +5,16 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ToastContainer, { ToastData } from "../../components/ui/ToastContainer";
 import { Address } from "../../types/address";
 import { addressService } from "../../services/addressService";
+import { useAuth } from "../../context/AuthContext";
 
 const Addresses = () => {
+  const { isAuthenticated, loading } = useAuth();
   const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
@@ -105,6 +108,11 @@ const Addresses = () => {
       }
     } catch (error) {}
   };
+
+  // Redirect if user is not authenticated and auth loading is complete
+  if (!loading && !isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   if (isLoading) {
     return (

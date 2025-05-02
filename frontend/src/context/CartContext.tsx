@@ -5,6 +5,7 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { useAuth } from "./AuthContext";
 
 export interface CartProduct {
   id: string;
@@ -37,6 +38,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState<CartProduct[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
+  const { isAuthenticated } = useAuth();
+
+  // Clear cart when user logs in
+  useEffect(() => {
+    if (isAuthenticated) {
+      setCart([]);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const savedCart = localStorage.getItem("cart");

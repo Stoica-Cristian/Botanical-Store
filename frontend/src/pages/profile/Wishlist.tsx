@@ -4,7 +4,7 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
 } from "@heroicons/react/24/outline";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ProductCard from "../../components/store/ProductCard";
@@ -12,8 +12,10 @@ import { Product } from "../../types/product";
 import { useState } from "react";
 import ToastContainer, { ToastData } from "../../components/ui/ToastContainer";
 import { useWishlist } from "../../context/WishlistContext";
+import { useAuth } from "../../context/AuthContext";
 
 const Wishlist = () => {
+  const { isAuthenticated, loading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
@@ -97,6 +99,11 @@ const Wishlist = () => {
       }
       return 0;
     });
+
+  // Redirect if user is not authenticated and auth loading is complete
+  if (!loading && !isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   if (isLoading) {
     return (

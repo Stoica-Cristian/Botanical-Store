@@ -11,10 +11,12 @@ import {
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import ToastContainer, { ToastData } from "../../components/ui/ToastContainer";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { userService } from "../../services/userService";
+import { useAuth } from "../../context/AuthContext";
 
 const Settings = () => {
+  const { isAuthenticated, loading } = useAuth();
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -121,6 +123,11 @@ const Settings = () => {
       setIsDeleteModalOpen(false);
     }
   };
+
+  // Redirect if user is not authenticated and auth loading is complete
+  if (!loading && !isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">

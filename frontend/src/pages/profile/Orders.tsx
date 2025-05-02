@@ -10,8 +10,11 @@ import { useState, useEffect } from "react";
 import { orderService } from "../../services/orderService";
 import { Order } from "../../types/order";
 import Loader from "../../components/ui/Loader";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const Orders = () => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -86,6 +89,11 @@ const Orders = () => {
       }
       return 0;
     });
+
+  // Redirect if user is not authenticated and auth loading is complete
+  if (!authLoading && !isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   if (loading) {
     return (
