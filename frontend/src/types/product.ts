@@ -28,6 +28,7 @@ interface ProductImage {
     user: {
       _id: string;
       name: string;
+      avatar?: string;
     };
     name: string;
     rating: number;

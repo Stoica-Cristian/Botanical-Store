@@ -1,48 +1,57 @@
-import { useState } from "react";
-
-const testimonials = [
-  {
-    id: 1,
-    name: "Sarah Johnson",
-    role: "Loyal Customer",
-    image: "https://randomuser.me/api/portraits/women/1.jpg",
-    content:
-      "Best online shopping experience ever! The products are high quality and delivery is super fast!",
-    rating: 5,
-  },
-  {
-    id: 2,
-    name: "John Smith",
-    role: "Verified Buyer",
-    image: "https://randomuser.me/api/portraits/men/1.jpg",
-    content: "I'm very satisfied with the services provided. Highly recommend!",
-    rating: 5,
-  },
-  {
-    id: 3,
-    name: "Emma Davis",
-    role: "New Customer",
-    image: "https://randomuser.me/api/portraits/women/2.jpg",
-    content:
-      "The products are exactly as pictured, and customer service is outstanding.",
-    rating: 4,
-  },
-];
+import { useState, useEffect } from "react";
+import reviewService from "../../services/reviewService";
+import { Review } from "../../types/product";
 
 const DashboardTestimonialsSection = () => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const recentReviews = await reviewService.getRecentReviews();
+        setReviews(recentReviews);
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, []);
 
   const nextSlide = () => {
     setActiveIndex((current) =>
-      current === testimonials.length - 1 ? 0 : current + 1
+      current === reviews.length - 1 ? 0 : current + 1
     );
   };
 
   const prevSlide = () => {
     setActiveIndex((current) =>
-      current === 0 ? testimonials.length - 1 : current - 1
+      current === 0 ? reviews.length - 1 : current - 1
     );
   };
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">What Our Customers Say</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Loading customer reviews...
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (reviews.length === 0) {
+    return null;
+  }
 
   return (
     <section className="py-20 bg-gray-50">
@@ -88,32 +97,40 @@ const DashboardTestimonialsSection = () => {
                 className="flex transition-transform duration-500 ease-in-out"
                 style={{ transform: `translateX(-${activeIndex * 100}%)` }}
               >
-                {testimonials.map((testimonial) => (
+                {reviews.map((review) => (
                   <div
-                    key={testimonial.id}
+                    key={review._id}
                     className="w-full flex-shrink-0 px-2 sm:px-4"
                   >
                     <div className="bg-white rounded-2xl p-4 sm:p-8 shadow-lg">
                       <div className="flex items-center mb-6">
-                        <img
-                          src={testimonial.image}
-                          alt={testimonial.name}
-                          className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover"
-                        />
+                        {review.user.avatar ? (
+                          <img
+                            src={review.user.avatar}
+                            alt={review.user.name}
+                            className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-accent/10 flex items-center justify-center">
+                            <span className="text-accent text-xl font-bold">
+                              {review.user.name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
                         <div className="ml-4">
                           <h4 className="font-bold text-base sm:text-lg">
-                            {testimonial.name}
+                            {review.user.name}
                           </h4>
                           <p className="text-gray-600 text-sm sm:text-base">
-                            {testimonial.role}
+                            Verified Buyer
                           </p>
                         </div>
                       </div>
                       <p className="text-gray-700 mb-4 text-sm sm:text-base">
-                        {testimonial.content}
+                        {review.comment}
                       </p>
                       <div className="flex text-accent">
-                        {[...Array(testimonial.rating)].map((_, i) => (
+                        {[...Array(review.rating)].map((_, i) => (
                           <svg
                             key={i}
                             className="w-4 h-4 sm:w-5 sm:h-5"
@@ -156,7 +173,7 @@ const DashboardTestimonialsSection = () => {
 
             {/* Dots Navigation */}
             <div className="flex justify-center mt-8 gap-3">
-              {testimonials.map((_, index) => (
+              {reviews.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveIndex(index)}

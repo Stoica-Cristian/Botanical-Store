@@ -8,6 +8,7 @@ import {
   TruckIcon,
   ArrowPathIcon,
   QuestionMarkCircleIcon,
+  ArrowUpIcon,
 } from "@heroicons/react/24/outline";
 
 interface FAQItem {
@@ -19,6 +20,7 @@ interface FAQItem {
 
 const FAQ = () => {
   const [openItemId, setOpenItemId] = useState<number | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const location = useLocation();
 
   const handleToggle = (id: number) => {
@@ -42,7 +44,24 @@ const FAQ = () => {
         }, 300);
       }
     }
+
+    const handleScroll = () => {
+      setShowScrollButton(window.scrollY > 500);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, [location]);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   const faqItems: FAQItem[] = [
     // Plant Care
@@ -415,6 +434,17 @@ const FAQ = () => {
         </section>
       </main>
       <Footer />
+
+      {/* Scroll to Top Button */}
+      {showScrollButton && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 p-3 bg-accent text-white rounded-full shadow-lg hover:bg-accent/90 transition-all duration-300 animate-bounce"
+          aria-label="Scroll to top"
+        >
+          <ArrowUpIcon className="h-6 w-6" />
+        </button>
+      )}
     </div>
   );
 };

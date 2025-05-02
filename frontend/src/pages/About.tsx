@@ -10,10 +10,13 @@ import {
   ShoppingBagIcon,
   StarIcon,
   TruckIcon,
+  ArrowUpIcon,
 } from "@heroicons/react/24/outline";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const About = () => {
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -31,8 +34,24 @@ const About = () => {
       observer.observe(el);
     });
 
-    return () => observer.disconnect();
+    const handleScroll = () => {
+      setShowScrollButton(window.scrollY > 500);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -235,6 +254,17 @@ const About = () => {
         </section>
       </main>
       <Footer />
+
+      {/* Scroll to Top Button */}
+      {showScrollButton && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 p-3 bg-accent text-white rounded-full shadow-lg hover:bg-accent/90 transition-all duration-300 animate-bounce"
+          aria-label="Scroll to top"
+        >
+          <ArrowUpIcon className="h-6 w-6" />
+        </button>
+      )}
     </div>
   );
 };

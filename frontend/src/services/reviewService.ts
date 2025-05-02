@@ -86,6 +86,17 @@ const reviewService = {
       throw error;
     }
   },
+
+  // Get the 3 most recent reviews
+  getRecentReviews: async (): Promise<Review[]> => {
+    try {
+      const response = await api.get('/api/reviews/recent');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching recent reviews:', error);
+      throw error;
+    }
+  },
 };
 
 export default reviewService; 

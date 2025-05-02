@@ -60,7 +60,7 @@ const Footer = () => {
             </p>
             <div className="flex space-x-4">
               <a
-                href="#"
+                href=""
                 className="p-2 bg-accent/10 rounded-full hover:bg-accent/20 transition-colors group"
               >
                 <svg
@@ -72,7 +72,7 @@ const Footer = () => {
                 </svg>
               </a>
               <a
-                href="#"
+                href=""
                 className="p-2 bg-accent/10 rounded-full hover:bg-accent/20 transition-colors group"
               >
                 <svg
@@ -84,7 +84,7 @@ const Footer = () => {
                 </svg>
               </a>
               <a
-                href="#"
+                href=""
                 className="p-2 bg-accent/10 rounded-full hover:bg-accent/20 transition-colors group"
               >
                 <svg

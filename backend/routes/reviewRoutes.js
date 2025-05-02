@@ -272,4 +272,44 @@ router.put("/:id", verifyToken, async (req, res) => {
   }
 });
 
+// Get the 3 most recent reviews
+router.get("/recent", async (req, res) => {
+  try {
+    console.log("📥 Fetching most recent reviews");
+
+    const reviews = await Review.find()
+      .populate("user", "firstName lastName avatar")
+      .sort({ createdAt: -1 })
+      .limit(3);
+
+    if (!reviews || reviews.length === 0) {
+      console.log("ℹ️ No reviews found");
+      return res.json([]);
+    }
+
+    console.log(`✅ Found ${reviews.length} recent reviews`);
+
+    // Transform reviews to match frontend expectations
+    const transformedReviews = reviews.map((review) => ({
+      _id: review._id,
+      user: {
+        _id: review.user._id,
+        name: `${review.user.firstName} ${review.user.lastName}`,
+        avatar: review.user.avatar,
+      },
+      name: `${review.user.firstName} ${review.user.lastName}`,
+      rating: review.rating,
+      comment: review.comment,
+      verified: review.verified,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt,
+    }));
+
+    res.json(transformedReviews);
+  } catch (error) {
+    console.error("❌ Error fetching recent reviews:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 export default router;
