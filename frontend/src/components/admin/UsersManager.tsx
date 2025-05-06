@@ -12,7 +12,6 @@ import {
   TrashIcon,
   EyeIcon,
   UserPlusIcon,
-  AdjustmentsHorizontalIcon,
   CheckBadgeIcon,
 } from "@heroicons/react/24/outline";
 import { User } from "../../types/user";
@@ -20,6 +19,7 @@ import Loader from "../ui/Loader";
 import ToastContainer, { ToastData } from "../ui/ToastContainer";
 import { userService } from "../../services/userService";
 import { useAuth } from "../../context/AuthContext";
+import { orderService } from "../../services/orderService";
 
 interface AdminUserView extends User {
   name?: string;
@@ -62,8 +62,8 @@ const UsersManager = () => {
 
       const userData = response?.data || [];
 
-      const transformedUsers: AdminUserView[] = userData.map(
-        (user: any, index: number) => {
+      const transformedUsers: AdminUserView[] = await Promise.all(
+        userData.map(async (user: any, index: number) => {
           const userId =
             user.id ||
             user._id ||
@@ -71,15 +71,21 @@ const UsersManager = () => {
             user.user_id ||
             `user-${index}`;
 
+          // Get order count for each user
+          const orderCount =
+            user.role === "admin"
+              ? 0
+              : await orderService.getUserOrderCount(userId);
+
           const transformedUser = {
             ...user,
             id: userId,
             name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
-            orders: 0,
+            orders: orderCount,
           };
 
           return transformedUser;
-        }
+        })
       );
 
       setUsers(transformedUsers);
@@ -124,7 +130,8 @@ const UsersManager = () => {
       comparison = a.orders - b.orders;
     } else if (sortField === "createdAt") {
       comparison =
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        new Date(a.createdAt || "").getTime() -
+        new Date(b.createdAt || "").getTime();
     } else if (sortField === "lastLogin" && a.lastLogin && b.lastLogin) {
       comparison =
         new Date(a.lastLogin).getTime() - new Date(b.lastLogin).getTime();
@@ -282,6 +289,7 @@ const UsersManager = () => {
     // Create an empty user template
     const newUser: AdminUserView = {
       id: "",
+      _id: "",
       email: "",
       firstName: "",
       lastName: "",

@@ -161,8 +161,6 @@ const Checkout = () => {
 
     if (!shippingAddress.zipCode.trim()) {
       errors.zipCode = "ZIP code is required";
-    } else if (!/^\d{5}(-\d{4})?$/.test(shippingAddress.zipCode)) {
-      errors.zipCode = "Please enter a valid ZIP code";
     }
 
     setFormErrors(errors);

@@ -68,6 +68,18 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
+// Get number of orders for a specific user
+router.get("/count/:userId", verifyToken, async (req, res) => {
+  try {
+    const count = await Order.countDocuments({ customer: req.params.userId });
+    res.json({ count });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error counting orders", error: error.message });
+  }
+});
+
 // Create new order
 router.post("/", verifyToken, async (req, res) => {
   console.log("🔍 Received request body:", req.body);

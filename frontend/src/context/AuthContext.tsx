@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           const userData = await userService.getProfile();
           setUser({
             id: userData._id,
+            _id: userData._id,
             email: userData.email,
             role: userData.role || "user",
             firstName: userData.firstName,
@@ -86,6 +87,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         const userObj = {
           id: userData._id,
+          _id: userData._id,
           email: userData.email,
           role: userData.role || "user",
           firstName: userData.firstName,
@@ -101,8 +103,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       } catch (profileErr) {
         setError("Could not fetch user profile");
       }
-    } catch (err) {
-      setError("Invalid email or password");
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setError("Invalid email or password");
+      } else if (err.response?.status === 403) {
+        setError("Account is inactive. Please contact support.");
+      } else {
+        setError("An error occurred during login. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

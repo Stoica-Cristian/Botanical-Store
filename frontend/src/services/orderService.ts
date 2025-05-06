@@ -110,5 +110,10 @@ export const orderService = {
       },
     });
     return response.data;
+  },
+
+  getUserOrderCount: async (userId: string) => {
+    const response = await api.get<{ count: number }>(`/api/orders/count/${userId}`);
+    return response.data.count;
   }
 };

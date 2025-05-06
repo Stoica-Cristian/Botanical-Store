@@ -56,6 +56,13 @@ router.post("/login", async (req, res) => {
   try {
     const user = await User.findOne({ email: email });
 
+    if (user.status === "inactive") {
+      console.log(`❌ Autentificare eșuată: Cont inactiv - ${email}`);
+      return res
+        .status(403)
+        .send("Account is inactive. Please contact support.");
+    }
+
     if (!user) {
       console.log(`❌ Autentificare eșuată: Email invalid - ${email}`);
       return res.status(401).send("Invalid Email or Password");
@@ -65,6 +72,9 @@ router.post("/login", async (req, res) => {
 
     if (isMatch) {
       const token = jwt.sign({ id: user._id }, process.env.ACCESS_TOKEN_SECRET);
+      await User.findByIdAndUpdate(user._id, {
+        lastLogin: new Date(),
+      });
       console.log(`✅ Autentificare reușită: ${user.email}`);
       res.status(200).json({ token: token });
     } else {

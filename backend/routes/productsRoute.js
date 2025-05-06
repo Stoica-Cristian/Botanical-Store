@@ -84,12 +84,6 @@ router.get("/:id", async (req, res) => {
 router.post("/", verifyToken, isAdmin, async (req, res) => {
   console.log("➕ RUTA: /products (POST) - Creare produs");
   try {
-    // Check if user is admin
-    if (req.userRole !== "admin") {
-      console.log(`❌ Acces interzis: Utilizatorul nu este admin`);
-      return res.status(403).json({ message: "Access denied" });
-    }
-
     const productData = {
       name: req.body.name,
       description: req.body.description,
