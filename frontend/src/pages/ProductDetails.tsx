@@ -180,6 +180,11 @@ const ProductDetails = () => {
   const handleToggleWishlist = async () => {
     if (!product) return;
 
+    if (!isAuthenticated) {
+      showToast("error", "Please login to add items to your wishlist");
+      return;
+    }
+
     const productInWishlist = isInWishlist(product._id);
 
     if (!productInWishlist) {
@@ -474,7 +479,7 @@ const ProductDetails = () => {
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       <main className="flex-1 container mx-auto px-4 sm:px-20 py-4 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-0 bg-white rounded-2xl p-4 sm:p-8 shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white rounded-2xl p-4 sm:p-8 shadow-sm">
           {/* Product Images */}
           <div className="space-y-4">
             <div className="relative">
@@ -937,7 +942,7 @@ const ProductDetails = () => {
                           <div className="w-full sm:w-auto text-center sm:text-left">
                             <div className="flex items-center gap-4">
                               <div>
-                                <div className="text-3xl sm:text-4xl font-bold text-gray-900">
+                                <div className="text-3xl font-bold text-gray-900">
                                   {product.rating.toFixed(1)}
                                 </div>
                                 <div className="flex items-center gap-1 mt-1">
@@ -975,13 +980,15 @@ const ProductDetails = () => {
                           </div>
 
                           <div className="w-full sm:w-auto sm:ml-auto">
-                            <button
-                              className="w-full sm:w-auto bg-accent hover:bg-accent-dark text-white text-sm px-6 py-2 rounded-lg flex items-center justify-center gap-2"
-                              onClick={() => setShowWriteReview(true)}
-                            >
-                              <StarIcon className="h-4 w-4" />
-                              <span>Write a Review</span>
-                            </button>
+                            {isAuthenticated && (
+                              <button
+                                className="w-full sm:w-auto bg-accent hover:bg-accent-dark text-white text-sm px-6 py-2 rounded-lg flex items-center justify-center gap-2"
+                                onClick={() => setShowWriteReview(true)}
+                              >
+                                <StarIcon className="h-4 w-4" />
+                                <span>Write a Review</span>
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -1226,7 +1233,9 @@ const ProductDetails = () => {
 
             <div className="mb-6 bg-accent/[0.08] p-4 rounded-lg">
               <div className="flex items-center gap-4">
-                <div className="text-3xl font-bold">{product.rating}</div>
+                <div className="text-3xl font-bold">
+                  {product.rating.toFixed(1)}
+                </div>
                 <div>
                   <div className="flex">
                     {[...Array(5)].map((_, index) => (

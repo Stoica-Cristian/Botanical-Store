@@ -65,7 +65,7 @@ const Wishlist = () => {
         name: item.name,
         price: item.price,
         images: item.images,
-        rating: item.rating,
+        rating: item.reviewsCount === 0 ? 0 : item.rating,
         reviewsCount: item.reviewsCount,
         reviews: item.reviews,
         category: item.category,

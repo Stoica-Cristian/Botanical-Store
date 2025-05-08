@@ -1,6 +1,7 @@
 import express from "express";
 import Address from "../models/Address.js";
 import verifyToken from "../middleware/verifyToken.js";
+import User from "../models/userModel.js";
 
 const router = express.Router();
 router.use(verifyToken);
@@ -143,6 +144,12 @@ router.patch("/:id/default", async (req, res) => {
       );
       return res.status(404).json({ message: "Address not found" });
     }
+
+    // Update user's profile with the default address
+    const addressString = `${address.street}, ${address.city}, ${address.state} ${address.zipCode}`;
+    await User.findByIdAndUpdate(req.user._id, {
+      addresses: [addressString],
+    });
 
     console.log(`Address ${req.params.id} set as default successfully`);
     res.json(address);

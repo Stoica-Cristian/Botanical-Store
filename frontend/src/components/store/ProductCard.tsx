@@ -6,7 +6,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Product } from "../../types/product";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
 
@@ -104,7 +104,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </div>
         </div>
         <div className="p-4">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">{name}</h3>
+          <Link
+            to={`/store/product/${productId}`}
+            className="text-lg font-medium text-gray-900 mb-2 hover:text-accent transition-colors block"
+          >
+            {name}
+          </Link>
           <div className="flex items-center gap-1 mb-3">
             <div className="flex">
               {[...Array(5)].map((_, i) => {

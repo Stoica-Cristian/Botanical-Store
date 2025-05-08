@@ -322,6 +322,16 @@ const Navbar = () => {
                       <span className="font-medium">Shopping Cart</span>
                     </Link>
                   </li>
+                  <div className="divider my-1"></div>
+                  <li>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-3 py-3 text-red-600 hover:bg-red-50 w-full rounded-lg"
+                    >
+                      <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                      <span className="font-medium">Logout</span>
+                    </button>
+                  </li>
                 </>
               )}
             </div>

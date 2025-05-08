@@ -35,6 +35,7 @@ const Profile = () => {
 
   const [user, setUser] = useState<UserProfile>({
     id: "",
+    _id: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -60,6 +61,7 @@ const Profile = () => {
         lastName: authUser.lastName || "",
         email: authUser.email || "",
         phoneNumber: authUser.phoneNumber || "",
+        addresses: authUser.addresses || [],
         avatar:
           authUser.avatar ||
           `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -85,6 +87,7 @@ const Profile = () => {
       UserProfile,
       | "stats"
       | "id"
+      | "_id"
       | "role"
       | "createdAt"
       | "updatedAt"

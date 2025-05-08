@@ -83,9 +83,19 @@ export const orderService = {
   },
 
   updateBulkOrderStatus: async (orderIds: string[], status: OrderStatusUpdate, adminId: string) => {
+    if (!adminId) {
+      throw new Error("Admin ID is required");
+    }
+    if (!orderIds || orderIds.length === 0) {
+      throw new Error("Order IDs are required");
+    }
+    if (!status || !status.status) {
+      throw new Error("Status is required");
+    }
+
     const response = await api.patch<Order[]>('/api/orders/bulk-status', {
       orderIds,
-      status
+      status: status.status
     }, {
       headers: {
         "X-Admin-Id": adminId,

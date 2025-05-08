@@ -364,6 +364,7 @@ const OrdersManager = () => {
           `${selectedOrders.length} orders updated to status: ${status}`
         );
         setSelectedOrders([]);
+        setNewStatus("");
       }
       setShowStatusUpdateModal(false);
     } catch (error) {
@@ -445,25 +446,7 @@ const OrdersManager = () => {
       addToast("success", "Order created successfully");
 
       // Reset the form
-      setNewOrder({
-        customer: "",
-        items: [
-          {
-            product: "",
-            quantity: 1,
-          },
-        ],
-        shippingAddress: "",
-        payment: {
-          method: "Credit Card",
-          status: "pending",
-          amount: 0,
-        },
-        status: "pending",
-        totalAmount: 0,
-        shippingCost: 0,
-        tax: 0,
-      });
+      resetNewOrder();
       setNewAddress({
         name: "",
         street: "",

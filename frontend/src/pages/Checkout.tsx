@@ -252,10 +252,13 @@ const Checkout = () => {
               ...shippingAddress,
             },
         payment: {
-          method: selectedGateway.name as
-            | "Credit Card"
-            | "Paypal"
-            | "Bank Transfer",
+          method:
+            selectedGateway.name === "PayPal"
+              ? "Paypal"
+              : (selectedGateway.name as
+                  | "Credit Card"
+                  | "Paypal"
+                  | "Bank Transfer"),
           status: "pending" as const,
           amount:
             cart.reduce(
@@ -1513,7 +1516,10 @@ const Checkout = () => {
                               )?.name
                             }
                           </p>
-                          {cardOption === "existing" &&
+                          {selectedGateway.name
+                            .toLowerCase()
+                            .includes("card") &&
+                            cardOption === "existing" &&
                             paymentMethods.find(
                               (p) => p._id === selectedPayment
                             ) && (

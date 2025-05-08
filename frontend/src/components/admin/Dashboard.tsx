@@ -18,6 +18,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from "recharts";
 import { statsService, AdminStats } from "../../services/statsService";
 import { useAuth } from "../../context/AuthContext";
@@ -31,11 +32,6 @@ interface DashboardStat {
 }
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
-
-interface LabelProps {
-  name: string;
-  percent: number;
-}
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -126,7 +122,11 @@ const Dashboard = () => {
           >
             <div>
               <p className="text-sm text-gray-500 mb-1">{stat.title}</p>
-              <p className="text-2xl font-bold">{stat.value}</p>
+              <p className="text-2xl font-bold">
+                {typeof stat.value === "string"
+                  ? stat.value.replace(/\.\d+$/, "")
+                  : Math.floor(stat.value)}
+              </p>
               <div
                 className={`flex items-center mt-2 ${
                   stat.change >= 0 ? "text-green-500" : "text-red-500"
@@ -197,13 +197,8 @@ const Dashboard = () => {
                   data={stats.categoryData}
                   cx="50%"
                   cy="50%"
-                  labelLine={{ stroke: "#374151", strokeWidth: 1 }}
-                  label={({ name, percent }: LabelProps) => (
-                    <text x={0} y={10} dy={8} fontSize={12} fontWeight={500}>
-                      {`${name}: ${(percent * 100).toFixed(0)}%`}
-                    </text>
-                  )}
-                  outerRadius={100}
+                  labelLine={false}
+                  outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
@@ -215,7 +210,33 @@ const Dashboard = () => {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number) => [`${value}%`, "Percentage"]}
+                  formatter={(value: number, name: string) => {
+                    const total = stats.categoryData.reduce(
+                      (sum, item) => sum + item.value,
+                      0
+                    );
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    return [`${percentage}%`, name];
+                  }}
+                />
+                <Legend
+                  layout="vertical"
+                  align="right"
+                  verticalAlign="middle"
+                  formatter={(value: string) => (
+                    <span
+                      style={{
+                        color:
+                          COLORS[
+                            stats.categoryData.findIndex(
+                              (item) => item.name === value
+                            ) % COLORS.length
+                          ],
+                      }}
+                    >
+                      {value}
+                    </span>
+                  )}
                 />
               </PieChart>
             </ResponsiveContainer>

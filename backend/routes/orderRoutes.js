@@ -153,24 +153,38 @@ router.post("/", verifyToken, async (req, res) => {
 
 router.patch("/bulk-status", verifyToken, isAdmin, async (req, res) => {
   try {
-    const { orderIds, status, notes } = req.body;
+    const { orderIds, status } = req.body;
+    console.log("📦 Updating bulk status for orders:", { orderIds, status });
 
-    await Order.updateMany(
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      console.log("❌ Invalid orderIds provided");
+      return res.status(400).json({ message: "Invalid order IDs provided" });
+    }
+
+    if (!status) {
+      console.log("❌ No status provided");
+      return res.status(400).json({ message: "Status is required" });
+    }
+
+    const updateResult = await Order.updateMany(
       { _id: { $in: orderIds } },
       {
         status,
-        ...(notes && { notes }),
         updatedAt: new Date(),
       }
     );
+
+    console.log(`✅ Updated ${updateResult.modifiedCount} orders`);
 
     const orders = await Order.find({ _id: { $in: orderIds } })
       .populate("customer", "firstName lastName email phoneNumber")
       .populate("items.product")
       .populate("shippingAddress");
 
+    console.log(`📤 Sending response with ${orders.length} updated orders`);
     res.json(orders);
   } catch (error) {
+    console.error("❌ Error updating orders status:", error);
     res
       .status(500)
       .json({ message: "Error updating orders status", error: error.message });

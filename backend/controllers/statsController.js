@@ -4,7 +4,6 @@ import Product from "../models/productModel.js";
 
 export const getAdminStats = async (req, res) => {
   try {
-    // Calculăm statisticile totale pentru luna curentă
     const currentMonth = new Date();
     currentMonth.setDate(1);
     currentMonth.setHours(0, 0, 0, 0);
@@ -15,7 +14,6 @@ export const getAdminStats = async (req, res) => {
     const twoMonthsAgo = new Date(lastMonth);
     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 1);
 
-    // Calculăm vânzările pentru luna curentă și luna trecută
     const [currentMonthSales, lastMonthSales] = await Promise.all([
       Order.aggregate([
         {
@@ -37,7 +35,6 @@ export const getAdminStats = async (req, res) => {
       ]),
     ]);
 
-    // Calculăm comenzile pentru luna curentă și luna trecută
     const [currentMonthOrders, lastMonthOrders] = await Promise.all([
       Order.countDocuments({ createdAt: { $gte: currentMonth } }),
       Order.countDocuments({
@@ -45,7 +42,6 @@ export const getAdminStats = async (req, res) => {
       }),
     ]);
 
-    // Calculăm utilizatorii noi pentru luna curentă și luna trecută
     const [currentMonthUsers, lastMonthUsers] = await Promise.all([
       User.countDocuments({
         role: "user",
@@ -57,7 +53,6 @@ export const getAdminStats = async (req, res) => {
       }),
     ]);
 
-    // Calculăm produsele noi pentru luna curentă și luna trecută
     const [currentMonthProducts, lastMonthProducts] = await Promise.all([
       Product.countDocuments({ createdAt: { $gte: currentMonth } }),
       Product.countDocuments({
@@ -65,7 +60,6 @@ export const getAdminStats = async (req, res) => {
       }),
     ]);
 
-    // Calculăm procentele de schimbare
     const calculateChange = (current, previous) => {
       if (!previous || previous === 0) return 0;
       return ((current - previous) / previous) * 100;
@@ -83,7 +77,6 @@ export const getAdminStats = async (req, res) => {
       lastMonthProducts
     );
 
-    // Calculăm statisticile totale
     const totalSales = await Order.aggregate([
       { $match: { status: { $in: ["delivered", "shipped"] } } },
       { $group: { _id: null, total: { $sum: "$totalAmount" } } },
@@ -93,14 +86,12 @@ export const getAdminStats = async (req, res) => {
     const totalUsers = await User.countDocuments({ role: "user" });
     const totalProducts = await Product.countDocuments();
 
-    // Obținem comenzile recente
     const recentOrders = await Order.find()
       .sort({ createdAt: -1 })
       .limit(5)
       .populate("customer", "firstName lastName email")
       .populate("items.product", "name price");
 
-    // Calculăm top produse
     const topProducts = await Order.aggregate([
       { $unwind: "$items" },
       {
@@ -131,7 +122,6 @@ export const getAdminStats = async (req, res) => {
       },
     ]);
 
-    // Calculăm date pentru graficul de vânzări (ultimele 10 luni)
     const salesData = await Order.aggregate([
       {
         $match: {
@@ -175,7 +165,6 @@ export const getAdminStats = async (req, res) => {
       { $sort: { _id: 1 } },
     ]);
 
-    // Calculăm date pentru graficul de categorii
     const categoryData = await Product.aggregate([
       {
         $group: {
