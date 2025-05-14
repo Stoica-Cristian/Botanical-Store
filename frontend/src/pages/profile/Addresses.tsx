@@ -65,15 +65,8 @@ const Addresses = () => {
   const handleDelete = async (id: string) => {
     if (deleteConfirm === id) {
       try {
-        const addressToDelete = addresses.find((a) => a._id === id);
-        if (addressToDelete?.isDefault) {
-          showToast("error", "Cannot delete default address");
-          return;
-        }
         await addressService.delete(id);
-        setAddresses((prevAddresses) =>
-          prevAddresses.filter((address) => address._id !== id)
-        );
+        fetchAddresses();
         showToast("success", "Address removed successfully");
         setDeleteConfirm(null);
       } catch (error) {

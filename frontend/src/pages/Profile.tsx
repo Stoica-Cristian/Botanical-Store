@@ -538,7 +538,6 @@ const Profile = () => {
                     }))
                   }
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
-                  required
                   pattern="[+]?[0-9\s-]+"
                 />
               </div>

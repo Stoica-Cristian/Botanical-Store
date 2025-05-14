@@ -65,16 +65,9 @@ const PaymentMethods = () => {
   const handleDelete = async (id: string) => {
     if (deleteConfirm === id) {
       try {
-        const methodToDelete = paymentMethods.find((m) => m._id === id);
-        if (methodToDelete?.isDefault) {
-          showToast("error", "Cannot delete default payment method");
-          return;
-        }
         await paymentMethodService.delete(id);
-        setPaymentMethods((prevMethods) =>
-          prevMethods.filter((method) => method._id !== id)
-        );
         showToast("success", "Payment method removed successfully");
+        fetchPaymentMethods();
         setDeleteConfirm(null);
       } catch (error) {
         showToast("error", "Failed to delete payment method");

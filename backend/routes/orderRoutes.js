@@ -3,6 +3,7 @@ import { isAdmin } from "../middleware/authMiddleware.js";
 import verifyToken from "../middleware/verifyToken.js";
 import Order from "../models/orderModel.js";
 import Settings from "../models/settings.js";
+import Address from "../models/Address.js";
 
 const router = express.Router();
 
@@ -106,32 +107,63 @@ router.post("/", verifyToken, async (req, res) => {
     }
 
     // Check if user is admin
-    const isAdmin =
+    const isAdminUser =
       req.headers["x-admin-id"] && req.headers["x-admin-id"] === req.user._id;
 
     // If user is not admin, ensure they can only create orders for themselves
-    if (!isAdmin && req.body.customer._id != req.user._id) {
+    if (!isAdminUser && req.body.customer._id != req.user._id) {
       console.log(req.body.customer._id, req.user._id);
       return res.status(403).json({
         message: "You can only create orders for yourself",
       });
     }
 
+    let processedShippingAddressId;
+    if (
+      req.body.shippingAddress &&
+      req.body.shippingAddress._id === "new-address"
+    ) {
+      const { name, street, city, state, zipCode, isDefault } =
+        req.body.shippingAddress;
+      const newAddress = new Address({
+        userId: req.user._id,
+        name,
+        street,
+        city,
+        state,
+        zipCode,
+        isDefault: isDefault || false,
+      });
+      const savedAddress = await newAddress.save();
+      processedShippingAddressId = savedAddress._id;
+      console.log(
+        `🏠 New address created with ID: ${processedShippingAddressId}`
+      );
+    } else if (req.body.shippingAddress && req.body.shippingAddress._id) {
+      processedShippingAddressId = req.body.shippingAddress._id;
+    } else {
+      return res.status(400).json({ message: "Invalid shipping address" });
+    }
+
     console.log("📦 Creating new order with data:", {
       customer: req.body.customer,
       items: req.body.items?.length,
       totalAmount: req.body.totalAmount,
+      shippingAddressId: processedShippingAddressId,
     });
 
-    const order = new Order({
+    const orderData = {
       ...req.body,
+      shippingAddress: processedShippingAddressId,
       tax: taxAmount,
       status: "pending",
       payment: {
         ...req.body.payment,
         status: "pending",
       },
-    });
+    };
+
+    const order = new Order(orderData);
 
     await order.save();
     console.log(`✅ Order created successfully with ID: ${order._id}`);
@@ -144,7 +176,7 @@ router.post("/", verifyToken, async (req, res) => {
     console.log(`📤 Sending response for order ${order._id}`);
     res.status(201).json(populatedOrder);
   } catch (error) {
-    console.error("❌ Error creating order:", error.message);
+    console.error("❌ Error creating order:", error.message, error.stack);
     res
       .status(400)
       .json({ message: "Error creating order", error: error.message });

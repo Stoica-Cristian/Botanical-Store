@@ -94,25 +94,57 @@ router.delete("/:id", async (req, res) => {
     console.log(
       `Attempting to delete address ${req.params.id} for user ${req.user._id}`
     );
-    const address = await Address.findOne({
+    const addressToDelete = await Address.findOne({
       _id: req.params.id,
       userId: req.user._id,
     });
 
-    if (!address) {
+    if (!addressToDelete) {
       console.log(
         `Address ${req.params.id} not found for user ${req.user._id}`
       );
       return res.status(404).json({ message: "Address not found" });
     }
 
-    if (address.isDefault) {
-      console.log(`Cannot delete default address ${req.params.id}`);
-      return res.status(400).json({ message: "Cannot delete default address" });
+    const wasDefault = addressToDelete.isDefault;
+
+    await Address.deleteOne({ _id: req.params.id, userId: req.user._id });
+    console.log(`Address ${req.params.id} deleted successfully`);
+
+    if (wasDefault) {
+      const remainingAddresses = await Address.find({
+        userId: req.user._id,
+      }).sort({ createdAt: 1 }); // Sortează după data creării, cele mai vechi primele
+
+      if (remainingAddresses.length > 0) {
+        const newDefaultAddress = remainingAddresses[0];
+        newDefaultAddress.isDefault = true;
+        await newDefaultAddress.save();
+        console.log(
+          `New default address set to ${newDefaultAddress._id} for user ${req.user._id}`
+        );
+        // Actualizează și profilul utilizatorului cu noua adresă default
+        const addressString = `${newDefaultAddress.street}, ${newDefaultAddress.city}, ${newDefaultAddress.state} ${newDefaultAddress.zipCode}`;
+        await User.findByIdAndUpdate(req.user._id, {
+          // Presupunând că modelul User are un câmp `defaultAddress` sau similar stocat ca string
+          // Dacă stochează ID-ul, ar fi: defaultAddress: newDefaultAddress._id
+          // Sau dacă `addresses` este un array de string-uri și vrei să actualizezi primul/principalul:
+          addresses: [addressString], // Aceasta este conform rutei PATCH /:id/default
+        });
+        console.log(
+          `User profile updated with new default address for user ${req.user._id}`
+        );
+      } else {
+        // Nu mai sunt adrese, poate ar trebui să ștergem și din profilul utilizatorului
+        await User.findByIdAndUpdate(req.user._id, {
+          addresses: [],
+        });
+        console.log(
+          `User profile addresses cleared as no addresses remain for user ${req.user._id}`
+        );
+      }
     }
 
-    await Address.deleteOne({ _id: req.params.id });
-    console.log(`Address ${req.params.id} deleted successfully`);
     res.json({ message: "Address deleted successfully" });
   } catch (error) {
     console.error("Error deleting address:", error);

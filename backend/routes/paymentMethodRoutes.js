@@ -88,27 +88,36 @@ router.delete("/:id", async (req, res) => {
     console.log(
       `[DELETE /payment-methods/${id}] Attempting to delete payment method for user ${req.user._id}`
     );
-    const paymentMethod = await PaymentMethod.findOne({
+    const paymentMethodToDelete = await PaymentMethod.findOne({
       _id: id,
       user: req.user._id,
     });
 
-    if (!paymentMethod) {
+    if (!paymentMethodToDelete) {
       console.log(`[DELETE /payment-methods/${id}] Payment method not found`);
       return res.status(404).json({ message: "Payment method not found" });
     }
 
-    if (paymentMethod.isDefault) {
-      console.log(
-        `[DELETE /payment-methods/${id}] Cannot delete default payment method`
-      );
-      return res
-        .status(400)
-        .json({ message: "Cannot delete default payment method" });
-    }
+    const wasDefault = paymentMethodToDelete.isDefault;
 
     await PaymentMethod.deleteOne({ _id: id, user: req.user._id });
     console.log(`[DELETE /payment-methods/${id}] Deleted successfully`);
+
+    if (wasDefault) {
+      const remainingMethods = await PaymentMethod.find({
+        user: req.user._id,
+      }).sort({ createdAt: 1 }); // Sort by creation date, oldest first
+
+      if (remainingMethods.length > 0) {
+        const newDefaultMethod = remainingMethods[0];
+        newDefaultMethod.isDefault = true;
+        await newDefaultMethod.save();
+        console.log(
+          `[DELETE /payment-methods/${id}] New default set to ${newDefaultMethod._id}`
+        );
+      }
+    }
+
     res.json({ message: "Payment method deleted successfully" });
   } catch (error) {
     console.error(`[DELETE /payment-methods/${id}] Error: ${error.message}`);

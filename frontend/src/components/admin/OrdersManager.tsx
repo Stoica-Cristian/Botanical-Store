@@ -235,15 +235,16 @@ const OrdersManager = () => {
 
   // Filter orders based on search term and status
   const filteredOrders = orders.filter((order) => {
+    const customerFirstName = order.customer?.firstName?.toLowerCase() || "";
+    const customerLastName = order.customer?.lastName?.toLowerCase() || "";
+    const customerEmail = order.customer?.email?.toLowerCase() || "";
+
     const matchesSearch =
       order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (order.customer.firstName?.toLowerCase() || "").includes(
-        searchTerm.toLowerCase()
-      ) ||
-      (order.customer.lastName?.toLowerCase() || "").includes(
-        searchTerm.toLowerCase()
-      ) ||
-      order.customer.email.toLowerCase().includes(searchTerm.toLowerCase());
+      customerFirstName.includes(searchTerm.toLowerCase()) ||
+      customerLastName.includes(searchTerm.toLowerCase()) ||
+      customerEmail.includes(searchTerm.toLowerCase());
+
     const matchesStatus =
       statusFilter === "All" || order.status === statusFilter;
 
@@ -480,14 +481,35 @@ const OrdersManager = () => {
   const handleEditClick = (order: Order) => {
     setOrderToEdit({
       ...order,
-      customer: {
-        ...order.customer,
-        id: order.customer.id,
-      },
-      shippingAddress: {
-        ...order.shippingAddress,
-        _id: order.shippingAddress._id,
-      },
+      customer: order.customer
+        ? {
+            ...order.customer,
+            _id: order.customer._id,
+            id: order.customer.id || order.customer._id,
+          }
+        : {
+            _id: "",
+            id: "",
+            email: "[șters]",
+            firstName: "[Utilizator ",
+            lastName: "Șters]",
+            role: "user",
+            status: "inactive",
+          },
+      shippingAddress: order.shippingAddress
+        ? {
+            ...order.shippingAddress,
+            _id: order.shippingAddress._id,
+          }
+        : {
+            _id: "",
+            name: "[Adresă Ștearsă]",
+            street: "",
+            city: "",
+            state: "",
+            zipCode: "",
+            isDefault: false,
+          },
     });
     setShowEditOrderModal(true);
   };
@@ -771,10 +793,16 @@ const OrdersManager = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {order.customer.firstName} {order.customer.lastName}
+                      {order.customer
+                        ? `${order.customer.firstName || ""} ${
+                            order.customer.lastName || ""
+                          }`.trim() || "[Deleted User]"
+                        : "[Deleted User]"}
                     </div>
                     <div className="text-sm text-gray-500">
-                      {order.customer.email}
+                      {order.customer
+                        ? order.customer.email || "[Email N/A]"
+                        : "[Deleted User]"}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -955,24 +983,30 @@ const OrdersManager = () => {
                   <p>
                     <span className="text-gray-500">Name:</span>{" "}
                     <span className="font-medium">
-                      {selectedOrder.customer.firstName}{" "}
-                      {selectedOrder.customer.lastName}
+                      {selectedOrder.customer
+                        ? `${selectedOrder.customer.firstName || ""} ${
+                            selectedOrder.customer.lastName || ""
+                          }`.trim() || "[Deleted User]"
+                        : "[Deleted User]"}
                     </span>
                   </p>
                   <p>
                     <span className="text-gray-500">Email:</span>{" "}
                     <span className="font-medium">
-                      {selectedOrder.customer.email}
+                      {selectedOrder.customer
+                        ? selectedOrder.customer.email || "[Email N/A]"
+                        : "[Deleted User]"}
                     </span>
                   </p>
-                  {selectedOrder.customer.phoneNumber && (
-                    <p>
-                      <span className="text-gray-500">Phone:</span>{" "}
-                      <span className="font-medium">
-                        {selectedOrder.customer.phoneNumber}
-                      </span>
-                    </p>
-                  )}
+                  <p>
+                    <span className="text-gray-500">Phone:</span>{" "}
+                    <span className="font-medium">
+                      {selectedOrder.customer &&
+                      selectedOrder.customer.phoneNumber
+                        ? selectedOrder.customer.phoneNumber
+                        : "[N/A]"}
+                    </span>
+                  </p>
                 </div>
               </div>
 

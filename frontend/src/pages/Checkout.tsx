@@ -56,6 +56,7 @@ const Checkout = () => {
     cardHolder: "",
     expiryDate: "",
     cvv: "",
+    cardType: "",
   });
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [isCardTouched, setIsCardTouched] = useState(false);
@@ -63,6 +64,7 @@ const Checkout = () => {
     null
   );
   const [orderMessage, setOrderMessage] = useState<string>("");
+  const [saveCardDetails, setSaveCardDetails] = useState(true);
 
   const showToast = (type: "success" | "error", message: string) => {
     const id = Date.now();
@@ -205,9 +207,20 @@ const Checkout = () => {
         setCurrentStep("payment");
         break;
       case "payment":
-        if (!selectedPayment) {
+        if (!selectedGateway) {
           showToast("error", "Please select a payment method");
           return;
+        }
+        // Only check for card selection if the selected gateway is for card payments
+        if (selectedGateway.name.toLowerCase().includes("card")) {
+          if (cardOption === "existing" && !selectedPayment) {
+            showToast("error", "Please select a saved card or add a new one");
+            return;
+          }
+          if (cardOption === "new" && !validateCardForm()) {
+            showToast("error", "Please fill in all required card details");
+            return;
+          }
         }
         setCurrentStep("review");
         break;
@@ -229,9 +242,47 @@ const Checkout = () => {
   };
 
   const handlePlaceOrder = async () => {
+    setIsLoading(true);
+
     try {
       if (!selectedGateway) {
-        throw new Error("No payment gateway selected");
+        showToast("error", "No payment gateway selected.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (
+        selectedGateway.name.toLowerCase().includes("card") &&
+        cardOption === "new" &&
+        saveCardDetails
+      ) {
+        if (!validateCardForm()) {
+          showToast("error", "Please fill in all new card details correctly.");
+          setIsLoading(false);
+          return;
+        }
+        try {
+          const newPaymentMethodData = {
+            cardType: newCard.cardType,
+            lastFour: newCard.cardNumber.replace(/\s/g, "").slice(-4),
+            expiryDate: newCard.expiryDate,
+            isDefault: paymentMethods.length === 0,
+          };
+          const savedNewCard = await paymentMethodService.create(
+            newPaymentMethodData
+          );
+          setPaymentMethods((prev) => [...prev, savedNewCard]);
+          setSelectedPayment(savedNewCard._id);
+          showToast("success", "New payment card saved successfully.");
+        } catch (saveCardError) {
+          console.error("Error saving new payment card:", saveCardError);
+          showToast(
+            "error",
+            "Could not save the new payment card. Please try again."
+          );
+          setIsLoading(false);
+          return;
+        }
       }
 
       const orderData = {
@@ -283,12 +334,18 @@ const Checkout = () => {
       console.error("Error placing order:", error);
       setOrderStatus("error");
       setOrderMessage("Failed to place order. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Add validation for card form
   const validateCardForm = () => {
     const errors: Record<string, string> = {};
+
+    if (!newCard.cardType.trim()) {
+      errors.cardType = "Card type is required";
+    }
 
     if (!newCard.cardNumber.trim()) {
       errors.cardNumber = "Card number is required";
@@ -537,7 +594,10 @@ const Checkout = () => {
                     className={`btn flex-1 ${
                       addressOption === "new" ? "btn-accent" : "btn-outline"
                     }`}
-                    onClick={() => setAddressOption("new")}
+                    onClick={() => {
+                      setAddressOption("new");
+                      setSelectedAddress(null);
+                    }}
                   >
                     New Address
                   </button>
@@ -1123,6 +1183,58 @@ const Checkout = () => {
                                     d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                                   />
                                 </svg>
+                                Card Type
+                              </span>
+                            </label>
+                            <div className="mt-2">
+                              <select
+                                name="cardType"
+                                className={`select select-bordered w-full ${
+                                  cardErrors.cardType ? "select-error" : ""
+                                }`}
+                                value={newCard.cardType}
+                                onChange={(e) =>
+                                  handleCardInputChange(
+                                    "cardType",
+                                    e.target.value
+                                  )
+                                }
+                                onBlur={handleCardBlur}
+                              >
+                                <option value="">Select card type</option>
+                                <option value="Visa">Visa</option>
+                                <option value="Mastercard">Mastercard</option>
+                                <option value="American Express">
+                                  American Express
+                                </option>
+                              </select>
+                              {cardErrors.cardType && (
+                                <label className="label">
+                                  <span className="label-text-alt text-error mt-1">
+                                    {cardErrors.cardType}
+                                  </span>
+                                </label>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="form-control">
+                            <label className="label">
+                              <span className="label-text font-semibold flex items-center gap-2 text-base-content/80">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 text-accent"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                                  />
+                                </svg>
                                 Card Number
                               </span>
                             </label>
@@ -1217,33 +1329,42 @@ const Checkout = () => {
                                       d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                                     />
                                   </svg>
-                                  Expiry Date
+                                  Expiry Month
                                 </span>
                               </label>
                               <div className="mt-2">
-                                <input
-                                  type="text"
-                                  className={`input input-bordered w-full ${
-                                    cardErrors.expiryDate ? "input-error" : ""
+                                <select
+                                  name="expiryMonth"
+                                  className={`select select-bordered w-full ${
+                                    cardErrors.expiryDate ? "select-error" : ""
                                   }`}
-                                  value={newCard.expiryDate}
-                                  onChange={(e) =>
+                                  value={newCard.expiryDate.split("/")[0] || ""}
+                                  onChange={(e) => {
+                                    const month = e.target.value;
+                                    const year =
+                                      newCard.expiryDate.split("/")[1] || "";
                                     handleCardInputChange(
                                       "expiryDate",
-                                      e.target.value
-                                    )
-                                  }
+                                      `${month}/${year}`
+                                    );
+                                  }}
                                   onBlur={handleCardBlur}
-                                  placeholder="MM/YY"
-                                  maxLength={5}
-                                />
-                                {cardErrors.expiryDate && (
-                                  <label className="label">
-                                    <span className="label-text-alt text-error mt-1">
-                                      {cardErrors.expiryDate}
-                                    </span>
-                                  </label>
-                                )}
+                                >
+                                  <option value="">Month</option>
+                                  {Array.from({ length: 12 }, (_, i) => {
+                                    const monthValue = (i + 1)
+                                      .toString()
+                                      .padStart(2, "0");
+                                    return (
+                                      <option
+                                        key={monthValue}
+                                        value={monthValue}
+                                      >
+                                        {monthValue}
+                                      </option>
+                                    );
+                                  })}
+                                </select>
                               </div>
                             </div>
 
@@ -1261,35 +1382,115 @@ const Checkout = () => {
                                       strokeLinecap="round"
                                       strokeLinejoin="round"
                                       strokeWidth={2}
-                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                                     />
                                   </svg>
-                                  CVV
+                                  Expiry Year
                                 </span>
                               </label>
                               <div className="mt-2">
-                                <input
-                                  type="text"
-                                  className={`input input-bordered w-full ${
-                                    cardErrors.cvv ? "input-error" : ""
+                                <select
+                                  name="expiryYear"
+                                  className={`select select-bordered w-full ${
+                                    cardErrors.expiryDate ? "select-error" : ""
                                   }`}
-                                  value={newCard.cvv}
-                                  onChange={(e) =>
-                                    handleCardInputChange("cvv", e.target.value)
-                                  }
+                                  value={newCard.expiryDate.split("/")[1] || ""}
+                                  onChange={(e) => {
+                                    const year = e.target.value;
+                                    const month =
+                                      newCard.expiryDate.split("/")[0] || "";
+                                    handleCardInputChange(
+                                      "expiryDate",
+                                      `${month}/${year}`
+                                    );
+                                  }}
                                   onBlur={handleCardBlur}
-                                  placeholder="123"
-                                  maxLength={4}
-                                />
-                                {cardErrors.cvv && (
-                                  <label className="label">
-                                    <span className="label-text-alt text-error mt-1">
-                                      {cardErrors.cvv}
-                                    </span>
-                                  </label>
-                                )}
+                                >
+                                  <option value="">Year</option>
+                                  {Array.from({ length: 15 }, (_, i) => {
+                                    const yearValue = (
+                                      new Date().getFullYear() + i
+                                    )
+                                      .toString()
+                                      .slice(-2);
+                                    return (
+                                      <option key={yearValue} value={yearValue}>
+                                        {new Date().getFullYear() + i}
+                                      </option>
+                                    );
+                                  })}
+                                </select>
                               </div>
                             </div>
+                          </div>
+                          {cardErrors.expiryDate && (
+                            <div className="col-span-2">
+                              <label className="label">
+                                <span className="label-text-alt text-error mt-1">
+                                  {cardErrors.expiryDate}
+                                </span>
+                              </label>
+                            </div>
+                          )}
+
+                          <div className="form-control col-span-2 md:col-span-1">
+                            <label className="label">
+                              <span className="label-text font-semibold flex items-center gap-2 text-base-content/80">
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5 text-accent"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                  />
+                                </svg>
+                                CVV
+                              </span>
+                            </label>
+                            <div className="mt-2">
+                              <input
+                                type="text"
+                                className={`input input-bordered w-full ${
+                                  cardErrors.cvv ? "input-error" : ""
+                                }`}
+                                value={newCard.cvv}
+                                onChange={(e) =>
+                                  handleCardInputChange("cvv", e.target.value)
+                                }
+                                onBlur={handleCardBlur}
+                                placeholder="123"
+                                maxLength={4}
+                              />
+                              {cardErrors.cvv && (
+                                <label className="label">
+                                  <span className="label-text-alt text-error mt-1">
+                                    {cardErrors.cvv}
+                                  </span>
+                                </label>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="form-control col-span-2">
+                            <label className="label cursor-pointer">
+                              <span className="label-text">
+                                Save card for future use?
+                              </span>
+                              <input
+                                type="checkbox"
+                                checked={saveCardDetails}
+                                onChange={(e) =>
+                                  setSaveCardDetails(e.target.checked)
+                                }
+                                className="checkbox checkbox-accent"
+                              />
+                            </label>
                           </div>
                         </div>
                       )}
