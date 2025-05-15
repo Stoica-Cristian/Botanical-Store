@@ -289,22 +289,56 @@ router.get("/recent", async (req, res) => {
 
     console.log(`✅ Found ${reviews.length} recent reviews`);
 
-    // Transform reviews to match frontend expectations
-    const transformedReviews = reviews.map((review) => ({
-      _id: review._id,
-      user: {
-        _id: review.user._id,
-        name: `${review.user.firstName} ${review.user.lastName}`,
-        avatar: review.user.avatar,
-      },
-      name: `${review.user.firstName} ${review.user.lastName}`,
-      rating: review.rating,
-      comment: review.comment,
-      verified: review.verified,
-      createdAt: review.createdAt,
-      updatedAt: review.updatedAt,
-    }));
+    // Transform reviews for a more frontend-friendly structure
+    const transformedReviews = reviews
+      .map((review) => {
+        const userExists = review.user;
+        const productExists = review.product;
 
+        const userName = userExists
+          ? `${review.user.firstName} ${review.user.lastName}`.trim()
+          : "Utilizator Anonim";
+
+        const productName = productExists
+          ? review.product.name
+          : "Produs Indisponibil";
+
+        const productImage =
+          productExists &&
+          review.product.images &&
+          review.product.images.length > 0 &&
+          typeof review.product.images[0] === "object" &&
+          review.product.images[0] !== null &&
+          "url" in review.product.images[0]
+            ? review.product.images[0].url
+            : productExists &&
+              review.product.images &&
+              review.product.images.length > 0 &&
+              typeof review.product.images[0] === "string"
+            ? review.product.images[0]
+            : "/placeholder-image.jpg";
+
+        return {
+          _id: review._id,
+          user: {
+            _id: userExists ? review.user._id : null,
+            name: userName,
+          },
+          product: {
+            _id: productExists ? review.product._id : null,
+            name: productName,
+            image: productImage,
+          },
+          rating: review.rating,
+          comment: review.comment,
+          createdAt: review.createdAt,
+        };
+      })
+      .filter((review) => review !== null);
+
+    console.log(
+      `📤 Sending ${transformedReviews.length} transformed recent reviews`
+    );
     res.json(transformedReviews);
   } catch (error) {
     console.error("❌ Error fetching recent reviews:", error);

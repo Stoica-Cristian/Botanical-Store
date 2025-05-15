@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { SignupData } from "../services/api";
 import { FaArrowLeft } from "react-icons/fa";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -28,6 +29,8 @@ const SignUp = () => {
     password: false,
     confirmPassword: false,
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validateField = (name: string, value: string) => {
     switch (name) {
@@ -272,22 +275,38 @@ const SignUp = () => {
                 >
                   Password*
                 </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  className={`w-full px-4 py-3 border ${
-                    errors.password && touched.password
-                      ? "border-red-500"
-                      : "border-gray-300 hover:border-accent/50"
-                  } rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-all duration-200 [&:-webkit-autofill]:bg-white [&:-webkit-autofill]:!text-black`}
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    required
+                    className={`w-full px-4 py-3 border pr-10 ${
+                      errors.password && touched.password
+                        ? "border-red-500"
+                        : "border-gray-300 hover:border-accent/50"
+                    } rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-all duration-200 [&:-webkit-autofill]:bg-white [&:-webkit-autofill]:!text-black`}
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-accent transition-colors"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
                 {errors.password && touched.password && (
                   <p className="mt-1 text-sm text-red-500 fade-in">
                     {errors.password}
@@ -301,22 +320,40 @@ const SignUp = () => {
                 >
                   Confirm Password*
                 </label>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  className={`w-full px-4 py-3 border ${
-                    errors.confirmPassword && touched.confirmPassword
-                      ? "border-red-500"
-                      : "border-gray-300 hover:border-accent/50"
-                  } rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-all duration-200 [&:-webkit-autofill]:bg-white [&:-webkit-autofill]:!text-black`}
-                  placeholder="Confirm password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                />
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    required
+                    className={`w-full px-4 py-3 border pr-10 ${
+                      errors.confirmPassword && touched.confirmPassword
+                        ? "border-red-500"
+                        : "border-gray-300 hover:border-accent/50"
+                    } rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent transition-all duration-200 [&:-webkit-autofill]:bg-white [&:-webkit-autofill]:!text-black`}
+                    placeholder="Confirm password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-accent transition-colors"
+                    aria-label={
+                      showConfirmPassword
+                        ? "Hide confirm password"
+                        : "Show confirm password"
+                    }
+                  >
+                    {showConfirmPassword ? (
+                      <EyeSlashIcon className="h-5 w-5" />
+                    ) : (
+                      <EyeIcon className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
                 {errors.confirmPassword && touched.confirmPassword && (
                   <p className="mt-1 text-sm text-red-500 fade-in">
                     {errors.confirmPassword}

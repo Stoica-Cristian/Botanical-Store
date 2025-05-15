@@ -49,7 +49,9 @@ const Checkout = () => {
     isDefault: false,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isFormTouched, setIsFormTouched] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<
+    Partial<Record<keyof typeof shippingAddress, boolean>>
+  >({});
   const [cardOption, setCardOption] = useState<"existing" | "new">("existing");
   const [newCard, setNewCard] = useState({
     cardNumber: "",
@@ -174,29 +176,40 @@ const Checkout = () => {
     value: string
   ) => {
     setShippingAddress((prev) => ({ ...prev, [field]: value }));
-    if (isFormTouched) {
+    if (touchedFields[field]) {
       validateForm();
     }
   };
 
-  const handleBlur = () => {
-    setIsFormTouched(true);
+  const handleBlur = (field: keyof typeof shippingAddress) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
     validateForm();
   };
 
   const handleNextStep = () => {
-    if (addressOption === "new") {
-      setIsFormTouched(true);
+    if (addressOption === "new" && currentStep === "address") {
+      setTouchedFields({
+        name: true,
+        street: true,
+        city: true,
+        state: true,
+        zipCode: true,
+      });
       if (!validateForm()) {
+        showToast("error", "Please fill in all required address fields");
         return;
       }
+    } else if (
+      addressOption === "existing" &&
+      currentStep === "address" &&
+      !selectedAddress
+    ) {
+      showToast("error", "Please select a delivery address");
+      return;
     }
+
     switch (currentStep) {
       case "address":
-        if (addressOption === "existing" && !selectedAddress) {
-          showToast("error", "Please select a delivery address");
-          return;
-        }
         setCurrentStep("shipping");
         break;
       case "shipping":
@@ -211,7 +224,6 @@ const Checkout = () => {
           showToast("error", "Please select a payment method");
           return;
         }
-        // Only check for card selection if the selected gateway is for card payments
         if (selectedGateway.name.toLowerCase().includes("card")) {
           if (cardOption === "existing" && !selectedPayment) {
             showToast("error", "Please select a saved card or add a new one");
@@ -339,7 +351,6 @@ const Checkout = () => {
     }
   };
 
-  // Add validation for card form
   const validateCardForm = () => {
     const errors: Record<string, string> = {};
 
@@ -506,7 +517,6 @@ const Checkout = () => {
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          {/* Progress Steps */}
           <div className="steps steps-horizontal w-full mb-12">
             <div
               className={`step cursor-pointer ${
@@ -526,7 +536,13 @@ const Checkout = () => {
                   return;
                 }
                 if (addressOption === "new") {
-                  setIsFormTouched(true);
+                  setTouchedFields({
+                    name: true,
+                    street: true,
+                    city: true,
+                    state: true,
+                    zipCode: true,
+                  });
                   if (!validateForm()) {
                     showToast(
                       "error",
@@ -570,7 +586,6 @@ const Checkout = () => {
             </div>
           </div>
 
-          {/* Address Step */}
           {currentStep === "address" && (
             <div className="card bg-base-100 shadow-xl">
               <div className="card-body">
@@ -578,7 +593,6 @@ const Checkout = () => {
                   Delivery Address
                 </h2>
 
-                {/* Address Option Selection */}
                 <div className="flex gap-4 mb-6">
                   <button
                     className={`btn flex-1 ${
@@ -719,16 +733,18 @@ const Checkout = () => {
                         <input
                           type="text"
                           className={`input input-bordered w-full ${
-                            formErrors.name ? "input-error" : ""
+                            touchedFields.name && formErrors.name
+                              ? "input-error"
+                              : ""
                           }`}
                           value={shippingAddress.name}
                           onChange={(e) =>
                             handleInputChange("name", e.target.value)
                           }
-                          onBlur={handleBlur}
+                          onBlur={() => handleBlur("name")}
                           placeholder="e.g. Home, Office, Vacation Home"
                         />
-                        {formErrors.name && (
+                        {touchedFields.name && formErrors.name && (
                           <label className="label">
                             <span className="label-text-alt text-error mt-1">
                               {formErrors.name}
@@ -768,16 +784,18 @@ const Checkout = () => {
                         <input
                           type="text"
                           className={`input input-bordered w-full ${
-                            formErrors.street ? "input-error" : ""
+                            touchedFields.street && formErrors.street
+                              ? "input-error"
+                              : ""
                           }`}
                           value={shippingAddress.street}
                           onChange={(e) =>
                             handleInputChange("street", e.target.value)
                           }
-                          onBlur={handleBlur}
+                          onBlur={() => handleBlur("street")}
                           placeholder="e.g. Strada Victoriei nr. 10, bl. A1, sc. 2, ap. 5"
                         />
-                        {formErrors.street && (
+                        {touchedFields.street && formErrors.street && (
                           <label className="label">
                             <span className="label-text-alt text-error mt-1">
                               {formErrors.street}
@@ -812,16 +830,18 @@ const Checkout = () => {
                           <input
                             type="text"
                             className={`input input-bordered w-full ${
-                              formErrors.city ? "input-error" : ""
+                              touchedFields.city && formErrors.city
+                                ? "input-error"
+                                : ""
                             }`}
                             value={shippingAddress.city}
                             onChange={(e) =>
                               handleInputChange("city", e.target.value)
                             }
-                            onBlur={handleBlur}
+                            onBlur={() => handleBlur("city")}
                             placeholder="e.g. București, Cluj-Napoca, Timișoara"
                           />
-                          {formErrors.city && (
+                          {touchedFields.city && formErrors.city && (
                             <label className="label">
                               <span className="label-text-alt text-error mt-1">
                                 {formErrors.city}
@@ -855,16 +875,18 @@ const Checkout = () => {
                           <input
                             type="text"
                             className={`input input-bordered w-full ${
-                              formErrors.state ? "input-error" : ""
+                              touchedFields.state && formErrors.state
+                                ? "input-error"
+                                : ""
                             }`}
                             value={shippingAddress.state}
                             onChange={(e) =>
                               handleInputChange("state", e.target.value)
                             }
-                            onBlur={handleBlur}
+                            onBlur={() => handleBlur("state")}
                             placeholder="e.g. București, Cluj, Timiș"
                           />
-                          {formErrors.state && (
+                          {touchedFields.state && formErrors.state && (
                             <label className="label">
                               <span className="label-text-alt text-error mt-1">
                                 {formErrors.state}
@@ -899,17 +921,19 @@ const Checkout = () => {
                         <input
                           type="text"
                           className={`input input-bordered w-full ${
-                            formErrors.zipCode ? "input-error" : ""
+                            touchedFields.zipCode && formErrors.zipCode
+                              ? "input-error"
+                              : ""
                           }`}
                           value={shippingAddress.zipCode}
                           onChange={(e) =>
                             handleInputChange("zipCode", e.target.value)
                           }
-                          onBlur={handleBlur}
+                          onBlur={() => handleBlur("zipCode")}
                           placeholder="e.g. 010101"
                           maxLength={6}
                         />
-                        {formErrors.zipCode && (
+                        {touchedFields.zipCode && formErrors.zipCode && (
                           <label className="label">
                             <span className="label-text-alt text-error mt-1">
                               {formErrors.zipCode}
@@ -924,7 +948,6 @@ const Checkout = () => {
             </div>
           )}
 
-          {/* Shipping Step */}
           {currentStep === "shipping" && (
             <div className="card bg-base-100 shadow-xl">
               <div className="card-body">
@@ -1004,7 +1027,6 @@ const Checkout = () => {
             </div>
           )}
 
-          {/* Payment Step */}
           {currentStep === "payment" && (
             <div className="card bg-base-100 shadow-xl">
               <div className="card-body">
@@ -1056,7 +1078,6 @@ const Checkout = () => {
                   ))}
                 </div>
 
-                {/* Show saved cards only if the selected gateway is for card payments */}
                 {selectedGateway &&
                   selectedGateway.name.toLowerCase().includes("card") && (
                     <div className="mt-8">
@@ -1500,7 +1521,6 @@ const Checkout = () => {
             </div>
           )}
 
-          {/* Review Step */}
           {currentStep === "review" && (
             <div className="card bg-base-100 shadow-xl">
               <div className="card-body">
@@ -1508,7 +1528,6 @@ const Checkout = () => {
                   Order Summary
                 </h2>
                 <div className="space-y-8">
-                  {/* Order Items */}
                   <div className="border-b pb-6">
                     <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
                       <svg
@@ -1559,7 +1578,6 @@ const Checkout = () => {
                     </div>
                   </div>
 
-                  {/* Delivery Address */}
                   <div className="border-b pb-6">
                     <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
                       <svg
@@ -1634,7 +1652,6 @@ const Checkout = () => {
                     )}
                   </div>
 
-                  {/* Shipping Method */}
                   <div className="border-b pb-6">
                     <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
                       <svg
@@ -1686,7 +1703,6 @@ const Checkout = () => {
                     )}
                   </div>
 
-                  {/* Payment Method */}
                   <div className="border-b pb-6">
                     <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
                       <svg
@@ -1747,7 +1763,6 @@ const Checkout = () => {
                       )}
                   </div>
 
-                  {/* Order Total */}
                   <div>
                     <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
                       <svg
@@ -1801,7 +1816,6 @@ const Checkout = () => {
             </div>
           )}
 
-          {/* Navigation Buttons */}
           <div className="flex justify-between mt-8">
             {currentStep !== "address" && (
               <button

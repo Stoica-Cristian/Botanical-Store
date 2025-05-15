@@ -1,5 +1,5 @@
 import { Address } from './address';
-import { Product, PotStyle } from './product';
+import { Product } from './product';
 import { User } from './user';
 
 // Types for Payment Information
@@ -12,7 +12,6 @@ export interface PaymentInfo {
 // Types for Order Item
 export interface OrderItem {
   product: Product;
-  potStyle?: PotStyle;
   quantity: number;
   price: number;
 }
@@ -23,6 +22,13 @@ export interface Order {
   customer: User;
   items: OrderItem[];
   shippingAddress: Address;
+  shippingAddressDetails?: {
+    name: string;
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  };
   payment: PaymentInfo;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   totalAmount: number;

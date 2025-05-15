@@ -194,14 +194,20 @@ export const getAdminStats = async (req, res) => {
       recentOrders: recentOrders.map((order) => ({
         id: order._id,
         orderNumber: order.orderNumber,
-        customer: {
-          id: order.customer._id,
-          name: `${order.customer.firstName} ${order.customer.lastName}`,
-          email: order.customer.email,
-        },
+        customer: order.customer
+          ? {
+              id: order.customer._id,
+              name: `${order.customer.firstName} ${order.customer.lastName}`,
+              email: order.customer.email,
+            }
+          : {
+              id: null,
+              name: "[Utilizator Șters]",
+              email: "N/A",
+            },
         products: order.items.map((item) => ({
-          id: item.product._id,
-          name: item.product.name,
+          id: item.product ? item.product._id : null,
+          name: item.product ? item.product.name : "[Produs Șters]",
           quantity: item.quantity,
           price: item.price,
         })),

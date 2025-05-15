@@ -273,14 +273,43 @@ const Orders = () => {
                             Shipping Details
                           </h3>
                           <div className="bg-gray-50 rounded-lg p-4">
-                            <p className="text-gray-600">
-                              {order.shippingAddress.street}
-                            </p>
-                            <p className="text-gray-600">
-                              {order.shippingAddress.city},{" "}
-                              {order.shippingAddress.state}{" "}
-                              {order.shippingAddress.zipCode}
-                            </p>
+                            {order.shippingAddressDetails ? (
+                              <>
+                                {order.shippingAddressDetails.name && (
+                                  <p className="font-semibold text-gray-700">
+                                    {order.shippingAddressDetails.name}
+                                  </p>
+                                )}
+                                <p className="text-gray-600">
+                                  {order.shippingAddressDetails.street}
+                                </p>
+                                <p className="text-gray-600">
+                                  {order.shippingAddressDetails.city},{" "}
+                                  {order.shippingAddressDetails.state}{" "}
+                                  {order.shippingAddressDetails.zipCode}
+                                </p>
+                              </>
+                            ) : order.shippingAddress ? ( // Fallback la vechiul sistem dacă shippingAddressDetails nu există, dar shippingAddress (ID) există
+                              <>
+                                {order.shippingAddress.name && (
+                                  <p className="font-semibold text-gray-700">
+                                    {order.shippingAddress.name}
+                                  </p>
+                                )}
+                                <p className="text-gray-600">
+                                  {order.shippingAddress.street}
+                                </p>
+                                <p className="text-gray-600">
+                                  {order.shippingAddress.city},{" "}
+                                  {order.shippingAddress.state}{" "}
+                                  {order.shippingAddress.zipCode}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-gray-500">
+                                Shipping details not available.
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div>

@@ -127,6 +127,28 @@ router.put("/password", async (req, res) => {
   }
 });
 
+router.delete("/profile", async (req, res) => {
+  console.log(
+    "🗑️ RUTA: /users/profile (DELETE) - Ștergere profil utilizator curent"
+  );
+  try {
+    const deletedUser = await User.findByIdAndDelete(req.user._id);
+
+    if (!deletedUser) {
+      console.log(`❌ Utilizatorul cu ID-ul ${req.user._id} nu a fost găsit`);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(
+      `✅ Utilizatorul cu ID-ul ${req.user._id} a fost șters cu succes`
+    );
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.log(`❌ Eroare la ștergerea utilizatorului: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 // Admin routes
 router.get("/", isAdmin, async (req, res) => {
   console.log("👥 RUTA: /users - Listare utilizatori");
@@ -232,28 +254,6 @@ router.delete("/:id", isAdmin, async (req, res) => {
     }
 
     console.log(`✅ Utilizatorul cu ID-ul ${id} a fost șters cu succes`);
-    res.status(200).json({ message: "User deleted successfully" });
-  } catch (error) {
-    console.log(`❌ Eroare la ștergerea utilizatorului: ${error.message}`);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
-
-router.delete("/profile", async (req, res) => {
-  console.log(
-    "🗑️ RUTA: /users/profile (DELETE) - Ștergere profil utilizator curent"
-  );
-  try {
-    const deletedUser = await User.findByIdAndDelete(req.user._id);
-
-    if (!deletedUser) {
-      console.log(`❌ Utilizatorul cu ID-ul ${req.user._id} nu a fost găsit`);
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    console.log(
-      `✅ Utilizatorul cu ID-ul ${req.user._id} a fost șters cu succes`
-    );
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     console.log(`❌ Eroare la ștergerea utilizatorului: ${error.message}`);

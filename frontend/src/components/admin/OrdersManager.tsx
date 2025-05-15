@@ -490,9 +490,9 @@ const OrdersManager = () => {
         : {
             _id: "",
             id: "",
-            email: "[șters]",
-            firstName: "[Utilizator ",
-            lastName: "Șters]",
+            email: "[deleted]",
+            firstName: "[deleted]",
+            lastName: "[deleted]",
             role: "user",
             status: "inactive",
           },
@@ -503,7 +503,7 @@ const OrdersManager = () => {
           }
         : {
             _id: "",
-            name: "[Adresă Ștearsă]",
+            name: "[deleted]",
             street: "",
             city: "",
             state: "",
@@ -1015,26 +1015,25 @@ const OrdersManager = () => {
                   Shipping Information
                 </h4>
                 <div className="space-y-2">
-                  {selectedOrder.shippingAddress && (
+                  {selectedOrder.shippingAddressDetails ? (
                     <>
                       <p className="font-medium">
-                        {selectedOrder.shippingAddress.street ||
+                        {selectedOrder.shippingAddressDetails.street ||
                           "No street address provided"}
                       </p>
                       <p>
-                        {selectedOrder.shippingAddress.city ||
+                        {selectedOrder.shippingAddressDetails.city ||
                           "No city provided"}
                         ,{" "}
-                        {selectedOrder.shippingAddress.state ||
+                        {selectedOrder.shippingAddressDetails.state ||
                           "No state provided"}{" "}
-                        {selectedOrder.shippingAddress.zipCode ||
+                        {selectedOrder.shippingAddressDetails.zipCode ||
                           "No zip code provided"}
                       </p>
                     </>
-                  )}
-                  {!selectedOrder.shippingAddress && (
+                  ) : (
                     <p className="text-gray-500">
-                      No shipping address provided
+                      No shipping address details available for this order.
                     </p>
                   )}
                 </div>
@@ -1747,18 +1746,32 @@ const OrdersManager = () => {
                       <input
                         type="text"
                         className="mt-1 block p-2 w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent"
-                        value={orderToEdit.shippingAddress._id || ""}
+                        value={orderToEdit.shippingAddress?._id || ""}
                         onChange={(e) =>
                           setOrderToEdit({
                             ...orderToEdit,
                             shippingAddress: {
-                              ...orderToEdit.shippingAddress,
+                              ...(orderToEdit.shippingAddress || {}),
                               _id: e.target.value,
                             },
                           })
                         }
                       />
                     </div>
+                    {orderToEdit.shippingAddressDetails && (
+                      <div className="mt-2 text-sm text-gray-600 bg-white p-3 rounded-md border">
+                        <p>
+                          <strong>Current Details (Read-only):</strong>
+                        </p>
+                        <p>{orderToEdit.shippingAddressDetails.name}</p>
+                        <p>{orderToEdit.shippingAddressDetails.street}</p>
+                        <p>
+                          {orderToEdit.shippingAddressDetails.city},{" "}
+                          {orderToEdit.shippingAddressDetails.state}{" "}
+                          {orderToEdit.shippingAddressDetails.zipCode}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

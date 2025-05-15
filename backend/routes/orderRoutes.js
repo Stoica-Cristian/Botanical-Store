@@ -4,6 +4,7 @@ import verifyToken from "../middleware/verifyToken.js";
 import Order from "../models/orderModel.js";
 import Settings from "../models/settings.js";
 import Address from "../models/Address.js";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -145,6 +146,16 @@ router.post("/", verifyToken, async (req, res) => {
       return res.status(400).json({ message: "Invalid shipping address" });
     }
 
+    // Preluăm detaliile complete ale adresei pentru denormalizare
+    const addressDetails = await Address.findById(
+      processedShippingAddressId
+    ).lean(); // .lean() pentru un obiect JS simplu
+    if (!addressDetails) {
+      return res
+        .status(404)
+        .json({ message: "Shipping address not found after processing." });
+    }
+
     console.log("📦 Creating new order with data:", {
       customer: req.body.customer,
       items: req.body.items?.length,
@@ -155,6 +166,13 @@ router.post("/", verifyToken, async (req, res) => {
     const orderData = {
       ...req.body,
       shippingAddress: processedShippingAddressId,
+      shippingAddressDetails: {
+        name: addressDetails.name,
+        street: addressDetails.street,
+        city: addressDetails.city,
+        state: addressDetails.state,
+        zipCode: addressDetails.zipCode,
+      },
       tax: taxAmount,
       status: "pending",
       payment: {
@@ -282,12 +300,81 @@ router.patch("/:orderId/status", verifyToken, isAdmin, async (req, res) => {
 
 router.put("/:orderId", verifyToken, isAdmin, async (req, res) => {
   try {
+    const updateData = { ...req.body };
+
+    // Verificăm și procesăm shippingAddress
+    if (
+      updateData.shippingAddress &&
+      typeof updateData.shippingAddress === "object"
+    ) {
+      if (
+        updateData.shippingAddress._id &&
+        mongoose.Types.ObjectId.isValid(updateData.shippingAddress._id)
+      ) {
+        updateData.shippingAddress = updateData.shippingAddress._id;
+        // Dacă ID-ul adresei se schimbă, ar trebui să actualizăm și shippingAddressDetails
+        const addressDetails = await Address.findById(
+          updateData.shippingAddress
+        ).lean();
+        if (addressDetails) {
+          updateData.shippingAddressDetails = {
+            name: addressDetails.name,
+            street: addressDetails.street,
+            city: addressDetails.city,
+            state: addressDetails.state,
+            zipCode: addressDetails.zipCode,
+          };
+        } else {
+          // Adresa nu a fost găsită, poate ar trebui să golim detaliile sau să trimitem o eroare?
+          // Pentru moment, le lăsăm așa cum sunt trimise din frontend sau le golim.
+          // Aceasta depinde de logica de business dorită.
+          // O variantă sigură este să ștergem shippingAddressDetails dacă adresa nu e validă.
+          delete updateData.shippingAddressDetails;
+          // Sau setăm la null/valori goale dacă modelul o cere.
+        }
+      } else {
+        // ID-ul adresei nu este valid sau lipsește, deci setăm la null
+        updateData.shippingAddress = null;
+        // De asemenea, ar trebui să gestionăm shippingAddressDetails în acest caz
+        // De exemplu, le ștergem dacă referința la adresă devine null
+        delete updateData.shippingAddressDetails;
+        // Alternativ, dacă frontendul trimite detalii goale și vrem să le salvăm:
+        // if (updateData.shippingAddressDetails && updateData.shippingAddressDetails.name === '[Adresă Ștearsă]') {
+        //   // Se păstrează shippingAddressDetails așa cum vine
+        // } else {
+        //   delete updateData.shippingAddressDetails;
+        // }
+      }
+    }
+    // Asigură-te că nu trimiți shippingAddressDetails dacă shippingAddress este null și nu vrei să salvezi detalii "șterse"
+    if (
+      updateData.shippingAddress === null &&
+      updateData.shippingAddressDetails &&
+      updateData.shippingAddressDetails.name === "[Adresă Ștearsă]"
+    ) {
+      // Dacă adresa ID e null și avem detalii de fallback pentru adresă ștearsă, le păstrăm.
+      // Acest caz e specific pentru situația în care adresa originală a fost ștearsă și vrem să păstrăm o marcare.
+    } else if (updateData.shippingAddress === null) {
+      delete updateData.shippingAddressDetails; // Altfel, ștergem detaliile dacă ID-ul e null.
+    }
+
+    // Similar, procesăm customer dacă este necesar și poate fi un obiect în loc de ID
+    if (updateData.customer && typeof updateData.customer === "object") {
+      if (
+        updateData.customer._id &&
+        mongoose.Types.ObjectId.isValid(updateData.customer._id)
+      ) {
+        updateData.customer = updateData.customer._id;
+      } else {
+        updateData.customer = null; // Sau gestionează eroarea
+      }
+    }
+
+    updateData.updatedAt = new Date();
+
     const order = await Order.findByIdAndUpdate(
       req.params.orderId,
-      {
-        ...req.body,
-        updatedAt: new Date(),
-      },
+      updateData,
       { new: true }
     )
       .populate("customer", "firstName lastName email phoneNumber")
